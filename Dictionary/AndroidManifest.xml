@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.cnx.dictionarytool.dictionary"
+<!--<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.cnx.dictionarytool"
     android:installLocation="auto"
     android:versionCode="104"
     android:versionName="5.4.9" >
@@ -40,8 +40,8 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
-            <!-- Direct installation of dictionaries -->
-            <!-- When opening from downloads, no proper file name is sent -->
+            &lt;!&ndash; Direct installation of dictionaries &ndash;&gt;
+            &lt;!&ndash; When opening from downloads, no proper file name is sent &ndash;&gt;
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -59,8 +59,8 @@
                       android:host="*"
                       android:pathPattern=".*"
                       android:mimeType="application/zip" />
-            <!-- Handling cases with no mimeType (maybe not necessary?)
-                 works for files not in downloads -->
+            &lt;!&ndash; Handling cases with no mimeType (maybe not necessary?)
+                 works for files not in downloads &ndash;&gt;
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -95,12 +95,12 @@
                       android:pathPattern=".*\\.quickdic\\.v007\\.zip" />
             </intent-filter>
 
-            <!--
+            &lt;!&ndash;
         	<meta-data android:name="android.app.searchable" android:resource="@xml/searchable"/>
         	        		    	<intent-filter>
             	<action android:name="android.intent.action.SEARCH" />
         	</intent-filter>
-            -->
+            &ndash;&gt;
         </activity>
         <activity
             android:name="com.cnx.dictionarytool.library.activities.DictionaryActivity"
@@ -108,15 +108,15 @@
             android:windowSoftInputMode="adjustResize"
             android:parentActivityName="com.cnx.dictionarytool.library.activities.DictionaryActivity" >
 
-            <!-- Parent activity meta-data to support API level 7+ -->
+            &lt;!&ndash; Parent activity meta-data to support API level 7+ &ndash;&gt;
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.cnx.dictionarytool.library.activities.DictionaryActivity" />
 
-            <!--
+            &lt;!&ndash;
            @author Dominik Köppl
      			Added two different intents to catch simple and advanced queries from other external applications.
-            -->
+            &ndash;&gt;
             <intent-filter>
                 <action android:name="android.intent.action.PROCESS_TEXT" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -137,7 +137,7 @@
 
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <!-- Allow direct opening of dictionary files -->
+            &lt;!&ndash; Allow direct opening of dictionary files &ndash;&gt;
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -173,7 +173,7 @@
             android:name="com.cnx.dictionarytool.library.activities.AboutActivity"
             android:parentActivityName="com.cnx.dictionarytool.library.activities.DictionaryActivity" >
 
-            <!-- Parent activity meta-data to support API level 7+ -->
+            &lt;!&ndash; Parent activity meta-data to support API level 7+ &ndash;&gt;
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.cnx.dictionarytool.library.activities.DictionaryActivity" />
@@ -182,7 +182,7 @@
             android:name="com.cnx.dictionarytool.library.activities.HtmlDisplayActivity"
             android:parentActivityName="com.cnx.dictionarytool.library.activities.DictionaryActivity" >
 
-            <!-- Parent activity meta-data to support API level 7+ -->
+            &lt;!&ndash; Parent activity meta-data to support API level 7+ &ndash;&gt;
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.cnx.dictionarytool.library.activities.DictionaryActivity" />
@@ -191,11 +191,13 @@
             android:name="com.cnx.dictionarytool.library.activities.PreferenceActivity"
             android:parentActivityName="com.cnx.dictionarytool.library.activities.DictionaryActivity" >
 
-            <!-- Parent activity meta-data to support API level 7+ -->
+            &lt;!&ndash; Parent activity meta-data to support API level 7+ &ndash;&gt;
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.cnx.dictionarytool.library.activities.DictionaryActivity" />
         </activity>
     </application>
 
-</manifest>
+</manifest>-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.cnx.dictionarytool"/>

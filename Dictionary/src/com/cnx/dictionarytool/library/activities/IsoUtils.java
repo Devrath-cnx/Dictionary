@@ -27,7 +27,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 
-import com.cnx.dictionarytool.dictionary.R;
+import com.cnx.dictionarytool.R;
 import com.cnx.dictionarytool.library.activities.DictionaryInfo.IndexInfo;
 import com.cnx.dictionarytool.library.util.engine.Language.LanguageResources;
 

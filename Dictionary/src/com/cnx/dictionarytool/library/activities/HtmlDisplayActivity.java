@@ -28,7 +28,7 @@ import android.widget.Button;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.cnx.dictionarytool.dictionary.R;
+import com.cnx.dictionarytool.R;
 import com.cnx.dictionarytool.library.util.collections.StringUtil;
 
 import java.io.IOException;

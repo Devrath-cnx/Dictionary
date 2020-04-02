@@ -66,7 +66,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.MenuItemCompat;
 
-import com.cnx.dictionarytool.dictionary.R;
+import com.cnx.dictionarytool.R;
 import com.cnx.dictionarytool.library.activities.DictionaryInfo.IndexInfo;
 import com.cnx.dictionarytool.library.util.collections.IntentLauncher;
 

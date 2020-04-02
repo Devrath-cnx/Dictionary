@@ -30,7 +30,7 @@ import android.view.MenuItem.OnMenuItemClickListener;
 
 import androidx.core.view.MenuItemCompat;
 
-import com.cnx.dictionarytool.dictionary.R;
+import com.cnx.dictionarytool.R;
 import com.cnx.dictionarytool.library.activities.DictionaryInfo.IndexInfo;
 import com.cnx.dictionarytool.library.util.engine.Dictionary;
 import com.cnx.dictionarytool.library.util.engine.TransliteratorManager;

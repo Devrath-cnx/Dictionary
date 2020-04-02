@@ -20,7 +20,7 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.widget.TextView;
 
-import com.cnx.dictionarytool.dictionary.R;
+import com.cnx.dictionarytool.R;
 
 public final class AboutActivity extends Activity {
 

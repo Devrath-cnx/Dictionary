@@ -22,7 +22,7 @@ import android.os.Environment;
 import android.preference.ListPreference;
 import android.preference.PreferenceManager;
 
-import com.cnx.dictionarytool.dictionary.R;
+import com.cnx.dictionarytool.R;
 
 import java.io.File;
 import java.util.List;
