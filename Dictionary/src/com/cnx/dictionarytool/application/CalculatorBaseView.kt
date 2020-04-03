@@ -1,4 +1,4 @@
-package com.cnx.dictionary.application
+package com.cnx.dictionarytool.application
 
 import android.content.Context
 import android.util.AttributeSet
