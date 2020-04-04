@@ -5,10 +5,11 @@ import android.util.AttributeSet
 import android.view.View
 import android.widget.FrameLayout
 import com.cnx.dictionarytool.R
+import com.cnx.dictionarytool.library.activities.DictionaryApplication
 
-class CalculatorBaseView : FrameLayout {
+class DictionaryBaseView : FrameLayout {
 
-
+    private var application: DictionaryApplication? = null
 
     constructor(context: Context) : super(context) {
         init(context)
@@ -28,10 +29,15 @@ class CalculatorBaseView : FrameLayout {
 
     private fun init(context: Context) {
         View.inflate(context, R.layout.fragment_base_dictionary, this)
-
-
+        initOnCreate(context)
     }
 
+
+
+    private fun initOnCreate(context: Context) {
+        DictionaryApplication.INSTANCE.init(context)
+        application = DictionaryApplication.INSTANCE
+    }
 
 
 }
