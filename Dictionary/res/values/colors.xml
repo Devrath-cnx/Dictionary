@@ -3,6 +3,10 @@
 
     <!-- Dictionary -->
     <color name="dictionary_background_color">#34495E</color>
+    <color name="year">#999999</color>
+    <color name="title">#222222</color>
     <!-- Dictionary -->
+
+
 
 </resources>
