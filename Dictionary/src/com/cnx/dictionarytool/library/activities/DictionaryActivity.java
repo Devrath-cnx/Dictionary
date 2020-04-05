@@ -503,34 +503,7 @@ public class DictionaryActivity extends AppCompatActivity {
             }
         }).start();
 
-        String fontName = prefs.getString(getString(R.string.fontKey), "FreeSerif.otf.jpg");
-        switch (fontName) {
-            case "SYSTEM":
-                typeface = Typeface.DEFAULT;
-                break;
-            case "SERIF":
-                typeface = Typeface.SERIF;
-                break;
-            case "SANS_SERIF":
-                typeface = Typeface.SANS_SERIF;
-                break;
-            case "MONOSPACE":
-                typeface = Typeface.MONOSPACE;
-                break;
-            default:
-                if ("FreeSerif.ttf.jpg".equals(fontName)) {
-                    fontName = "FreeSerif.otf.jpg";
-                }
-                try {
-                    typeface = Typeface.createFromAsset(getAssets(), fontName);
-                } catch (Exception e) {
-                    Log.w(LOG, "Exception trying to use typeface, using default.", e);
-                    if (!isFinishing())
-                        Toast.makeText(this, getString(R.string.fontFailure, e.getLocalizedMessage()),
-                                Toast.LENGTH_LONG).show();
-                }
-                break;
-        }
+        typeface = Typeface.DEFAULT;
         if (typeface == null) {
             Log.w(LOG, "Unable to create typeface, using default.");
             typeface = Typeface.DEFAULT;
