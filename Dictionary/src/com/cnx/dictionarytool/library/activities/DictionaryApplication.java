@@ -107,12 +107,12 @@ public enum DictionaryApplication {
             this.normalRowBg = normalRowBg;
         }
 
-        final int themeId;
-        final int tokenRowFg;
+        public final int themeId;
+        public final int tokenRowFg;
         final int tokenRowFgColor;
-        final int tokenRowMainBg;
-        final int tokenRowOtherBg;
-        final int normalRowBg;
+        public final int tokenRowMainBg;
+        public final int tokenRowOtherBg;
+        public final int normalRowBg;
     }
 
     public static final class DictionaryConfig implements Serializable {

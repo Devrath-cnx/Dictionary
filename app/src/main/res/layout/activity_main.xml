@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.cnx.dictionarytool.application.views.screen.DictionaryBaseView
+    <com.cnx.dictionarytool.application.views.screen.DictionaryScreen
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
