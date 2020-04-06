@@ -32,7 +32,9 @@ import com.cnx.dictionarytool.library.util.engine.TokenRow;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,6 +42,8 @@ public class AdptRecommendation extends RecyclerView.Adapter<AdptRecommendation.
 
     private List<RowBase> rows;
     private Context context;
+    private Set<String> toHighlight;
+    private final Index index;
 
     private DictionaryApplication.Theme theme = DictionaryApplication.Theme.LIGHT;
 
@@ -53,8 +57,16 @@ public class AdptRecommendation extends RecyclerView.Adapter<AdptRecommendation.
     }
 
 
-    public AdptRecommendation(Index data) {
-        this.rows = data.rows;
+    public AdptRecommendation(Index index) {
+        this.index = index;
+        this.rows = index.rows;
+        this.toHighlight = null;
+    }
+
+    public AdptRecommendation(final Index index, final List<RowBase> rows, final List<String> toHighlight) {
+        this.index = index;
+        this.rows = rows;
+        this.toHighlight = new LinkedHashSet<>(toHighlight);
     }
 
     @NotNull

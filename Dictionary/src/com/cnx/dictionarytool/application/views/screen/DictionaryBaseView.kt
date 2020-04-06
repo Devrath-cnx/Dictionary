@@ -1,6 +1,7 @@
 package com.cnx.dictionarytool.application.views.screen
 
 import android.content.Context
+import android.os.Handler
 import android.util.AttributeSet
 import android.util.Log
 import android.view.View
@@ -14,14 +15,22 @@ import com.cnx.dictionarytool.application.utils.CopyAssets
 import com.cnx.dictionarytool.application.views.adapters.AdptRecommendation
 import com.cnx.dictionarytool.application.views.models.DictonaryData
 import com.cnx.dictionarytool.library.activities.DictionaryApplication
+import com.cnx.dictionarytool.library.util.collections.StringUtil
 import com.cnx.dictionarytool.library.util.engine.Dictionary
 import com.cnx.dictionarytool.library.util.engine.Index
+import com.cnx.dictionarytool.library.util.engine.Index.IndexEntry
+import com.cnx.dictionarytool.library.util.engine.RowBase
 import com.cnx.dictionarytool.library.util.engine.TransliteratorManager
 import kotlinx.android.synthetic.main.fragment_base_dictionary.view.*
 import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.channels.FileChannel
+import java.util.*
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.regex.Pattern
+import kotlin.collections.ArrayList
 
 
 class DictionaryBaseView : FrameLayout {
@@ -41,6 +50,12 @@ class DictionaryBaseView : FrameLayout {
 
     private var mAdapter: AdptRecommendation? = null
     private val movieList: ArrayList<DictonaryData> = ArrayList()
+    private val uiHandler = Handler()
+    private var currentSearchOperation: SearchOperation? = null
+    private var rowsToShow: List<RowBase>? = null // if not null, just show these rows.
+
+
+    private val searchExecutor =  Executors.newSingleThreadExecutor { r -> Thread(r, "searchExecutor") }
 
     constructor(context: Context) : super(context) {
         init(context)
@@ -78,10 +93,12 @@ class DictionaryBaseView : FrameLayout {
     }
 
     private fun setEmptyStateOfSearch() {
-       /* TransliteratorManager.init(TransliteratorManager.Callback {
+        TransliteratorManager.init(TransliteratorManager.Callback {
             uiHandler.post(
-                Runnable { onSearchTextChange("Beautiful") })
-        }, DictionaryApplication.threadBackground)*/
+                Runnable {
+                    onSearchTextChange("Hello")
+                })
+        }, DictionaryApplication.threadBackground)
     }
 
     /** Initialize the list view **/
@@ -92,8 +109,12 @@ class DictionaryBaseView : FrameLayout {
         val mLayoutManager: RecyclerView.LayoutManager = LinearLayoutManager(context)
         recycler_view.layoutManager = mLayoutManager
         recycler_view.itemAnimator = DefaultItemAnimator()
-        recycler_view.adapter = mAdapter
-        prepareMovieData()
+        //recycler_view.adapter = mAdapter
+        setListAdapter(mAdapter!!)
+    }
+
+    private fun setListAdapter(mAdapter: AdptRecommendation) {
+        recycler_view.adapter =mAdapter
     }
 
     /** Initialize dictionary application **/
@@ -136,110 +157,133 @@ class DictionaryBaseView : FrameLayout {
 
     }
 
-    private fun prepareMovieData() {
-        var movie =
-            DictonaryData(
-                "Mad Max: Fury Road",
-                "Action & Adventure",
-                "2015"
-            )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "Inside Out",
-            "Animation, Kids & Family",
-            "2015"
-        )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "Star Wars: Episode VII - The Force Awakens",
-            "Action",
-            "2015"
-        )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "Shaun the Sheep",
-            "Animation",
-            "2015"
-        )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "The Martian",
-            "Science Fiction & Fantasy",
-            "2015"
-        )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "Mission: Impossible Rogue Nation",
-            "Action",
-            "2015"
-        )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "Up",
-            "Animation",
-            "2009"
-        )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "Star Trek",
-            "Science Fiction",
-            "2009"
-        )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "The LEGO Movie",
-            "Animation",
-            "2014"
-        )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "Iron Man",
-            "Action & Adventure",
-            "2008"
-        )
-        movieList.add(movie)
-        movie =
-            DictonaryData(
-                "Aliens",
-                "Science Fiction",
-                "1986"
-            )
-        movieList.add(movie)
-        movie =
-            DictonaryData(
-                "Chicken Run",
-                "Animation",
-                "2000"
-            )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "Back to the Future",
-            "Science Fiction",
-            "1985"
-        )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "Raiders of the Lost Ark",
-            "Action & Adventure",
-            "1981"
-        )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "Goldfinger",
-            "Action & Adventure",
-            "1965"
-        )
-        movieList.add(movie)
-        movie = DictonaryData(
-            "Guardians of the Galaxy",
-            "Science Fiction & Fantasy",
-            "2014"
-        )
-        movieList.add(movie)
-        mAdapter!!.notifyDataSetChanged()
+    // --------------------------------------------------------------------------
+    // SearchText
+    // --------------------------------------------------------------------------
+    private fun onSearchTextChange(text: String) {
+        currentSearchOperation = SearchOperation(text, index!!)
+        searchExecutor.execute(currentSearchOperation)
     }
 
 
+    // --------------------------------------------------------------------------
+    // SearchOperation
+    // --------------------------------------------------------------------------
+    private fun searchFinished(searchOperation: SearchOperation) {
+        if (searchOperation.interrupted.get()) {
+            Log.d(currentScreen,"Search operation was interrupted: $searchOperation")
+            return
+        }
+        if (searchOperation != currentSearchOperation) {
+            Log.d(currentScreen,"Stale searchOperation finished: $searchOperation")
+            return
+        }
+        val searchResult = searchOperation.searchResult
+        Log.d(currentScreen,"searchFinished: $searchOperation, searchResult=$searchResult")
+        currentSearchOperation = null
+        uiHandler.postDelayed({
+            if (currentSearchOperation == null) {
+                if (searchResult != null) {
+                    if (isFiltered()) {
+                        clearFiltered()
+                    }
+                    jumpToRow(searchResult.startRow)
+                } else if (searchOperation.multiWordSearchResult != null) {
+                    // Multi-row search....
+                    setFiltered(searchOperation)
+                } else {
+                    throw IllegalStateException("This should never happen.")
+                }
+            } else {
+                Log.d(currentScreen,"More coming, waiting for currentSearchOperation.")
+            }
+        }, 20)
+    }
 
+    private fun setFiltered(searchOperation: SearchOperation) {
+        rowsToShow = searchOperation.multiWordSearchResult
+        setListAdapter(AdptRecommendation(index, rowsToShow, searchOperation.searchTokens))
+    }
 
+    val WHITESPACE = Pattern.compile("\\s+")
+
+    inner class SearchOperation(searchText: String?, index: Index) : Runnable {
+        val interrupted =
+            AtomicBoolean(false)
+        val searchText: String = StringUtil.normalizeWhitespace(searchText)
+        var searchTokens // filled in for multiWord.
+                : List<String>? = null
+        val index: Index
+        var searchStartMillis: Long = 0
+        var searchResult: IndexEntry? = null
+        var multiWordSearchResult: List<RowBase>? = null
+        var done = false
+        override fun toString(): String {
+            return String.format(
+                "SearchOperation(%s,%s)",
+                searchText,
+                interrupted.toString()
+            )
+        }
+
+        override fun run() {
+            try {
+                searchStartMillis = System.currentTimeMillis()
+                val searchTokenArray = WHITESPACE.split(searchText)
+                if (searchTokenArray.size == 1) {
+                    searchResult = index.findInsertionPoint(searchText, interrupted)
+                } else {
+                    searchTokens = Arrays.asList(*searchTokenArray)
+                    multiWordSearchResult = index.multiWordSearch(
+                        searchText, searchTokens,
+                        interrupted
+                    )
+                }
+                Log.d(DictionaryBaseView::class.simpleName,
+                    "searchText=" + searchText + ", searchDuration="
+                            + (System.currentTimeMillis() - searchStartMillis)
+                            + ", interrupted=" + interrupted.get()
+                )
+                if (!interrupted.get()) {
+                    uiHandler.post(Runnable { searchFinished(this@SearchOperation) })
+                } else {
+                    Log.d(
+                         DictionaryBaseView::class.simpleName,
+                        "interrupted, skipping searchFinished."
+                    )
+                }
+            } catch (e: java.lang.Exception) {
+                Log.e(
+                      DictionaryBaseView::class.simpleName,
+                    "Failure during search (can happen during Activity close): " + e.message
+                )
+            } finally {
+                synchronized(this) {
+                    //done = true
+                    //this.notifyAll()
+                }
+            }
+        }
+
+        init {
+            this.index = index
+        }
+    }
+
+    private fun clearFiltered() {
+        setListAdapter(AdptRecommendation(index))
+        rowsToShow = null
+    }
+
+    // --------------------------------------------------------------------------
+    // Filtered results.
+    // --------------------------------------------------------------------------
+    private fun isFiltered(): Boolean {
+        return rowsToShow != null
+    }
+
+    private fun jumpToRow(row: Int) {
+        Log.d(currentScreen,"jumpToRow: $row, refocusSearchText=false")
+        recycler_view.layoutManager!!.scrollToPosition(row)
+    }
 }
