@@ -44,6 +44,7 @@ import com.cnx.dictionarytool.library.util.engine.Index;
 import com.cnx.dictionarytool.library.util.engine.PairEntry;
 import com.cnx.dictionarytool.library.util.engine.RowBase;
 import com.cnx.dictionarytool.library.util.engine.TokenRow;
+import com.cnx.dictionarytool.library.util.engine.TransliteratorManager;
 
 import java.io.File;
 import java.io.RandomAccessFile;
@@ -75,11 +76,16 @@ public class DictionaryScreen extends FrameLayout {
     private int fontSizeSp = 14;
 
     private boolean clickOpensContextMenu = false;
+    private String selectedSpannableText = null;
+    private int selectedSpannableIndex = -1;
     private final Handler uiHandler = new Handler();
 
     private int indexIndex = 0;
     private Context context;
     private EditText searchId;
+    private View listContainerId;
+    private View listNoDataContainerId;
+    private LinearLayout rootId;
 
     private List<RowBase> rowsToShow = null; // if not null, just show these rows.
 
@@ -96,24 +102,22 @@ public class DictionaryScreen extends FrameLayout {
 
 
     private ListView listView;
-    private ListView getListView() {
-        if (listView == null) {
-            listView = findViewById(android.R.id.list);
-        }
-        return listView;
-    }
 
-    private EditText getSearchView() {
-        if (searchId == null) {
-            searchId = findViewById(R.id.searchId);
-        }
-        return searchId;
-    }
+    private LinearLayout getRootId() { if (rootId == null) { rootId = findViewById(R.id.rootId); } return rootId; }
+
+    private ListView getListView() { if (listView == null) { listView = findViewById(android.R.id.list); } return listView; }
+
+    private EditText getSearchView() { if (searchId == null) { searchId = findViewById(R.id.searchId); } return searchId; }
+
+    private View getListContainer() {  if (listContainerId == null) { listContainerId = findViewById(R.id.listContainerId);} return listContainerId; }
+
+    private View getEmptyContainer() { if (listNoDataContainerId == null) { listNoDataContainerId = findViewById(R.id.listNoDataContainerId); } return listNoDataContainerId; }
 
 
 
     private void setListAdapter(ListAdapter adapter) {
         getListView().setAdapter(adapter);
+        getRootId().requestLayout();
     }
 
     /******************************* Constructors **************************************************/
@@ -144,7 +148,10 @@ public class DictionaryScreen extends FrameLayout {
         findViewsInScreen();
         setListener();
         setDictionaryFile(context);
+        setInitialListState();
     }
+
+
 
     private void setListener() {
         getSearchView().addTextChangedListener(new TextWatcher() {
@@ -505,9 +512,7 @@ public class DictionaryScreen extends FrameLayout {
         }
     }
 
-    private String selectedSpannableText = null;
 
-    private int selectedSpannableIndex = -1;
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -543,8 +548,20 @@ public class DictionaryScreen extends FrameLayout {
             1);
 
     private void onSearchTextChange(final String text) {
-        currentSearchOperation = new SearchOperation(text, index);
-        searchExecutor.execute(currentSearchOperation);
+
+        if(text.length()>3||text.length()==3){
+            //Set the container states
+            getEmptyContainer().setVisibility(View.GONE);
+            getListContainer().setVisibility(View.VISIBLE);
+            //Perform search
+            currentSearchOperation = new SearchOperation(text, index);
+            searchExecutor.execute(currentSearchOperation);
+        }else{
+            //Set the container states
+            getEmptyContainer().setVisibility(View.VISIBLE);
+            getListContainer().setVisibility(View.GONE);
+        }
+
     }
 
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
@@ -673,7 +690,21 @@ public class DictionaryScreen extends FrameLayout {
     private void findViewsInScreen() {
         getListView();
         getSearchView();
+        getEmptyContainer();
+        getListContainer();
     }
 
-
+    private void setInitialListState() {
+        TransliteratorManager.init(new TransliteratorManager.Callback() {
+            @Override
+            public void onTransliteratorReady() {
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        onSearchTextChange("");
+                    }
+                });
+            }
+        }, DictionaryApplication.threadBackground);
+    }
 }
