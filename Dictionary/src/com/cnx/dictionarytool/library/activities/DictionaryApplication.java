@@ -80,7 +80,7 @@ public enum DictionaryApplication {
     // Unordered.
     static Map<String, DictionaryInfo> DOWNLOADABLE_UNCOMPRESSED_FILENAME_NAME_TO_DICTIONARY_INFO = null;
 
-    enum Theme {
+    public enum Theme {
         DEFAULT(R.style.Theme_Default,
         R.style.Theme_Default_TokenRow_Fg,
         R.color.theme_default_token_row_fg,

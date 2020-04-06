@@ -36,7 +36,8 @@
             android:background="@drawable/sel_rectangle">
 
             <EditText
-                android:layout_width="wrap_content"
+                android:id="@+id/searchId"
+                android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:textColor="@android:color/white"

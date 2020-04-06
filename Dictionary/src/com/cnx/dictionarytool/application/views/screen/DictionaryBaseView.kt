@@ -11,11 +11,12 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.cnx.dictionarytool.R
 import com.cnx.dictionarytool.application.utils.CopyAssets
-import com.cnx.dictionarytool.application.views.models.DictonaryData
 import com.cnx.dictionarytool.application.views.adapters.AdptRecommendation
+import com.cnx.dictionarytool.application.views.models.DictonaryData
 import com.cnx.dictionarytool.library.activities.DictionaryApplication
 import com.cnx.dictionarytool.library.util.engine.Dictionary
 import com.cnx.dictionarytool.library.util.engine.Index
+import com.cnx.dictionarytool.library.util.engine.TransliteratorManager
 import kotlinx.android.synthetic.main.fragment_base_dictionary.view.*
 import java.io.File
 import java.io.IOException
@@ -65,17 +66,29 @@ class DictionaryBaseView : FrameLayout {
 
 
     private fun initOnCreate(context: Context) {
+        setListener(context)
         initDictionaryApplication(context)
         setDictionaryFile()
         initListView(context)
+        setEmptyStateOfSearch()
+    }
+
+    private fun setListener(context: Context) {
+
+    }
+
+    private fun setEmptyStateOfSearch() {
+       /* TransliteratorManager.init(TransliteratorManager.Callback {
+            uiHandler.post(
+                Runnable { onSearchTextChange("Beautiful") })
+        }, DictionaryApplication.threadBackground)*/
     }
 
     /** Initialize the list view **/
     private fun initListView(context: Context) {
-        mAdapter =
-            AdptRecommendation(
-                movieList
-            )
+        Log.d(currentScreen, "Loading index $indexIndex")
+        index = dictionary!!.indices[indexIndex]
+        mAdapter =AdptRecommendation(index)
         val mLayoutManager: RecyclerView.LayoutManager = LinearLayoutManager(context)
         recycler_view.layoutManager = mLayoutManager
         recycler_view.itemAnimator = DefaultItemAnimator()
