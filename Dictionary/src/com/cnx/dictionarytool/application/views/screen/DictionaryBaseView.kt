@@ -51,11 +51,11 @@ class DictionaryBaseView : FrameLayout {
     private val indexIndex = 0
 
     private var mAdapter: AdptRecommendation? = null
-    private val movieList: ArrayList<DictonaryData> = ArrayList()
     private val uiHandler = Handler()
     private var currentSearchOperation: SearchOperation? = null
     private var rowsToShow: List<RowBase>? = null // if not null, just show these rows.
 
+    private val WHITESPACE = Pattern.compile("\\s+")
 
     private val searchExecutor =  Executors.newSingleThreadExecutor { r -> Thread(r, "searchExecutor") }
 
@@ -119,7 +119,6 @@ class DictionaryBaseView : FrameLayout {
         val mLayoutManager: RecyclerView.LayoutManager = LinearLayoutManager(context)
         recycler_view.layoutManager = mLayoutManager
         recycler_view.itemAnimator = DefaultItemAnimator()
-        //recycler_view.adapter = mAdapter
         setListAdapter(mAdapter!!)
     }
 
@@ -167,18 +166,11 @@ class DictionaryBaseView : FrameLayout {
 
     }
 
-    // --------------------------------------------------------------------------
-    // SearchText
-    // --------------------------------------------------------------------------
     private fun onSearchTextChange(text: String) {
         currentSearchOperation = SearchOperation(text, index!!)
         searchExecutor.execute(currentSearchOperation)
     }
 
-
-    // --------------------------------------------------------------------------
-    // SearchOperation
-    // --------------------------------------------------------------------------
     private fun searchFinished(searchOperation: SearchOperation) {
         if (searchOperation.interrupted.get()) {
             Log.d(currentScreen,"Search operation was interrupted: $searchOperation")
@@ -214,8 +206,6 @@ class DictionaryBaseView : FrameLayout {
         rowsToShow = searchOperation.multiWordSearchResult
         setListAdapter(AdptRecommendation(index, rowsToShow, searchOperation.searchTokens))
     }
-
-    val WHITESPACE = Pattern.compile("\\s+")
 
     inner class SearchOperation(searchText: String?, index: Index) : Runnable {
         val interrupted =
@@ -285,9 +275,6 @@ class DictionaryBaseView : FrameLayout {
         rowsToShow = null
     }
 
-    // --------------------------------------------------------------------------
-    // Filtered results.
-    // --------------------------------------------------------------------------
     private fun isFiltered(): Boolean {
         return rowsToShow != null
     }
