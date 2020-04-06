@@ -2,6 +2,8 @@ package com.cnx.dictionarytool.application.views.screen
 
 import android.content.Context
 import android.os.Handler
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.AttributeSet
 import android.util.Log
 import android.view.View
@@ -89,7 +91,15 @@ class DictionaryBaseView : FrameLayout {
     }
 
     private fun setListener(context: Context) {
+        searchId.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                onSearchTextChange(s.toString().trim())
+            }
 
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
     }
 
     private fun setEmptyStateOfSearch() {
