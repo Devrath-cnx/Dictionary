@@ -1,9 +1,11 @@
 package com.cnx.dictionarytool.application.views.screen;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -12,14 +14,18 @@ import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
 import android.text.style.StyleSpan;
 import android.util.AttributeSet;
+import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -36,6 +42,7 @@ import com.cnx.dictionarytool.R;
 import com.cnx.dictionarytool.application.utils.CopyAssets;
 import com.cnx.dictionarytool.library.activities.DictionaryApplication;
 import com.cnx.dictionarytool.library.activities.HtmlDisplayActivity;
+import com.cnx.dictionarytool.library.activities.MyWebView;
 import com.cnx.dictionarytool.library.util.collections.NonLinkClickableSpan;
 import com.cnx.dictionarytool.library.util.collections.StringUtil;
 import com.cnx.dictionarytool.library.util.engine.Dictionary;
@@ -48,6 +55,7 @@ import com.cnx.dictionarytool.library.util.engine.TransliteratorManager;
 
 import java.io.File;
 import java.io.RandomAccessFile;
+import java.io.UnsupportedEncodingException;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.Collections;
@@ -85,7 +93,10 @@ public class DictionaryScreen extends FrameLayout {
     private EditText searchId;
     private View listContainerId;
     private View listNoDataContainerId;
+    private View listWebViewContainerId;
     private LinearLayout rootId;
+    private ListView listView;
+    private WebView webView;
 
     private List<RowBase> rowsToShow = null; // if not null, just show these rows.
 
@@ -101,7 +112,7 @@ public class DictionaryScreen extends FrameLayout {
     private DictionaryApplication.Theme theme = DictionaryApplication.Theme.LIGHT;
 
 
-    private ListView listView;
+    private WebView getWebView() { if (webView == null) { webView = findViewById(R.id.webView); } return webView; }
 
     private LinearLayout getRootId() { if (rootId == null) { rootId = findViewById(R.id.rootId); } return rootId; }
 
@@ -113,6 +124,7 @@ public class DictionaryScreen extends FrameLayout {
 
     private View getEmptyContainer() { if (listNoDataContainerId == null) { listNoDataContainerId = findViewById(R.id.listNoDataContainerId); } return listNoDataContainerId; }
 
+    private View getWebViewContainer() {  if (listWebViewContainerId == null) { listWebViewContainerId = findViewById(R.id.listWebViewContainerId);} return listWebViewContainerId; }
 
 
     private void setListAdapter(ListAdapter adapter) {
@@ -148,10 +160,9 @@ public class DictionaryScreen extends FrameLayout {
         findViewsInScreen();
         setListener();
         setDictionaryFile(context);
+        initListView();
         setInitialListState();
     }
-
-
 
     private void setListener() {
         getSearchView().addTextChangedListener(new TextWatcher() {
@@ -164,6 +175,13 @@ public class DictionaryScreen extends FrameLayout {
 
             @Override
             public void onTextChanged(CharSequence s, int start,int before, int count) { }
+        });
+
+
+        webView.setWebViewClient(new WebViewClient(){
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return true;
+            }
         });
     }
 
@@ -188,6 +206,13 @@ public class DictionaryScreen extends FrameLayout {
                 break;
             }
         }
+    }
+
+    private void onListItemClick(ListView l, View v, int rowIdx, long id) {
+        defocusSearchText();
+    }
+
+    private void initListView() {
         Log.d("LOG", "Loading index " + indexIndex);
         index = dictionary.indices.get(indexIndex);
         getListView().setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
@@ -201,23 +226,10 @@ public class DictionaryScreen extends FrameLayout {
         setListAdapter(new IndexAdapter(index));
     }
 
-    private void onListItemClick(ListView l, View v, int rowIdx, long id) {
-        defocusSearchText();
-    }
-
     private void defocusSearchText() {
         getListView().requestFocus();
     }
 
-    private void showHtml(final List<HtmlEntry> htmlEntries, final String htmlTextToHighlight) {
-        String html = HtmlEntry.htmlBody(htmlEntries, index.shortName);
-        // Log.d(LOG, "html=" + html);
-       /* startActivityForResult(
-                HtmlDisplayActivity.getHtmlIntent(getApplicationContext(), String.format(
-                        "<html><head><meta name=\"viewport\" content=\"width=device-width\"></head><body>%s</body></html>", html),
-                        htmlTextToHighlight, false),
-                0);*/
-    }
 
     final class IndexAdapter extends BaseAdapter {
 
@@ -692,6 +704,8 @@ public class DictionaryScreen extends FrameLayout {
         getSearchView();
         getEmptyContainer();
         getListContainer();
+        getWebView();
+        getWebViewContainer();
     }
 
     private void setInitialListState() {
@@ -706,5 +720,41 @@ public class DictionaryScreen extends FrameLayout {
                 });
             }
         }, DictionaryApplication.threadBackground);
+    }
+
+    private void showHtml(final List<HtmlEntry> htmlEntries, final String htmlTextToHighlight) {
+        String html = HtmlEntry.htmlBody(htmlEntries, index.shortName);
+
+        String mData = String.format(
+                "<html><head><meta name=\"viewport\" content=\"width=device-width\"></head><body>%s</body></html>", html);
+
+        initWebView(mData);
+
+    }
+
+    private void initWebView(String html) {
+        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        final String fontSize = prefs.getString(context.getString(R.string.fontSizeKey), "14");
+        int fontSizeSp;
+        try {
+            fontSizeSp = Integer.parseInt(fontSize.trim());
+        } catch (NumberFormatException e) {
+            fontSizeSp = 14;
+        }
+        getWebView().getSettings().setDefaultFontSize(fontSizeSp);
+        try {
+            // No way to get pure UTF-8 data into WebView
+            html = Base64.encodeToString(html.getBytes("UTF-8"), Base64.DEFAULT);
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException("Missing UTF-8 support?!", e);
+        }
+        // Use loadURL to allow specifying a charset
+        getWebView().loadUrl("data:text/html;charset=utf-8;base64," + html);
+
+
+        getEmptyContainer().setVisibility(View.GONE);
+        getListContainer().setVisibility(View.GONE);
+        getWebViewContainer().setVisibility(View.VISIBLE);
+        getRootId().requestLayout();
     }
 }
