@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <color name="theme_default_token_row_fg">#FFFFFF</color>
+    <color name="theme_default_token_row_main_bg">#222222</color>
+    <color name="theme_default_token_row_other_bg">#222222</color>
+    <color name="theme_default_normal_row_bg">#000000</color>
+    <color name="theme_light_token_row_fg">#000000</color>
+    <color name="theme_light_token_row_main_bg">#EEEEEE</color>
+    <color name="theme_light_token_row_other_bg">#EEEEEE</color>
+    <color name="theme_light_normal_row_bg">#FFFFFF</color>
+    <color name="gray">#777777</color>
+
     <!-- Dictionary -->
     <color name="dictionary_background_color">#34495E</color>
     <color name="year">#999999</color>

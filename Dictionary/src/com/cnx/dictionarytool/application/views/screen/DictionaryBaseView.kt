@@ -15,14 +15,13 @@ import androidx.recyclerview.widget.RecyclerView
 import com.cnx.dictionarytool.R
 import com.cnx.dictionarytool.application.utils.CopyAssets
 import com.cnx.dictionarytool.application.views.adapters.AdptRecommendation
-import com.cnx.dictionarytool.application.views.models.DictonaryData
-import com.cnx.dictionarytool.library.activities.DictionaryApplication
-import com.cnx.dictionarytool.library.util.collections.StringUtil
-import com.cnx.dictionarytool.library.util.engine.Dictionary
-import com.cnx.dictionarytool.library.util.engine.Index
-import com.cnx.dictionarytool.library.util.engine.Index.IndexEntry
-import com.cnx.dictionarytool.library.util.engine.RowBase
-import com.cnx.dictionarytool.library.util.engine.TransliteratorManager
+import com.cnx.dictionarytool.library.others.DictionaryApplication
+import com.cnx.dictionarytool.library.collections.StringUtil
+import com.cnx.dictionarytool.library.engine.Dictionary
+import com.cnx.dictionarytool.library.engine.Index
+import com.cnx.dictionarytool.library.engine.Index.IndexEntry
+import com.cnx.dictionarytool.library.engine.RowBase
+import com.cnx.dictionarytool.library.engine.TransliteratorManager
 import kotlinx.android.synthetic.main.fragment_base_dictionary.view.*
 import java.io.File
 import java.io.IOException
@@ -32,7 +31,6 @@ import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.regex.Pattern
-import kotlin.collections.ArrayList
 
 
 class DictionaryBaseView : FrameLayout {
@@ -51,11 +49,11 @@ class DictionaryBaseView : FrameLayout {
     private val indexIndex = 0
 
     private var mAdapter: AdptRecommendation? = null
-    private val movieList: ArrayList<DictonaryData> = ArrayList()
     private val uiHandler = Handler()
     private var currentSearchOperation: SearchOperation? = null
     private var rowsToShow: List<RowBase>? = null // if not null, just show these rows.
 
+    private val WHITESPACE = Pattern.compile("\\s+")
 
     private val searchExecutor =  Executors.newSingleThreadExecutor { r -> Thread(r, "searchExecutor") }
 
@@ -119,7 +117,6 @@ class DictionaryBaseView : FrameLayout {
         val mLayoutManager: RecyclerView.LayoutManager = LinearLayoutManager(context)
         recycler_view.layoutManager = mLayoutManager
         recycler_view.itemAnimator = DefaultItemAnimator()
-        //recycler_view.adapter = mAdapter
         setListAdapter(mAdapter!!)
     }
 
@@ -167,18 +164,11 @@ class DictionaryBaseView : FrameLayout {
 
     }
 
-    // --------------------------------------------------------------------------
-    // SearchText
-    // --------------------------------------------------------------------------
     private fun onSearchTextChange(text: String) {
         currentSearchOperation = SearchOperation(text, index!!)
         searchExecutor.execute(currentSearchOperation)
     }
 
-
-    // --------------------------------------------------------------------------
-    // SearchOperation
-    // --------------------------------------------------------------------------
     private fun searchFinished(searchOperation: SearchOperation) {
         if (searchOperation.interrupted.get()) {
             Log.d(currentScreen,"Search operation was interrupted: $searchOperation")
@@ -214,8 +204,6 @@ class DictionaryBaseView : FrameLayout {
         rowsToShow = searchOperation.multiWordSearchResult
         setListAdapter(AdptRecommendation(index, rowsToShow, searchOperation.searchTokens))
     }
-
-    val WHITESPACE = Pattern.compile("\\s+")
 
     inner class SearchOperation(searchText: String?, index: Index) : Runnable {
         val interrupted =
@@ -285,9 +273,6 @@ class DictionaryBaseView : FrameLayout {
         rowsToShow = null
     }
 
-    // --------------------------------------------------------------------------
-    // Filtered results.
-    // --------------------------------------------------------------------------
     private fun isFiltered(): Boolean {
         return rowsToShow != null
     }
