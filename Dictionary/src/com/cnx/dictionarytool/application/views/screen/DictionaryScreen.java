@@ -39,6 +39,12 @@ import androidx.annotation.Nullable;
 
 import com.cnx.dictionarytool.R;
 import com.cnx.dictionarytool.application.utils.CopyAssets;
+import com.cnx.dictionarytool.di.components.DaggerNetworkComponent;
+import com.cnx.dictionarytool.di.components.NetworkComponent;
+import com.cnx.dictionarytool.di.modulles.ContextModule;
+import com.cnx.dictionarytool.di.modulles.NetworkModule;
+import com.cnx.dictionarytool.di.modulles.OkHttpClientModule;
+import com.cnx.dictionarytool.interfaces.RandomUsersApi;
 import com.cnx.dictionarytool.library.others.DictionaryApplication;
 import com.cnx.dictionarytool.library.collections.NonLinkClickableSpan;
 import com.cnx.dictionarytool.library.collections.StringUtil;
@@ -69,10 +75,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import timber.log.Timber;
+
+import static com.cnx.dictionarytool.application.utils.Constants.DICTIONARY_FILE_URL;
+
 
 public class DictionaryScreen extends FrameLayout {
 
     private String CURRENT_SCREEN =  DictionaryScreen.this.getClass().getSimpleName();
+    private NetworkComponent networkComponent;
 
     private DictionaryApplication application;
     private String dictionaryFile = "";
@@ -125,6 +140,19 @@ public class DictionaryScreen extends FrameLayout {
     private View getEmptyContainer() { if (listNoDataContainerId == null) { listNoDataContainerId = findViewById(R.id.listNoDataContainerId); } return listNoDataContainerId; }
     private View getWebViewContainer() {  if (listWebViewContainerId == null) { listWebViewContainerId = findViewById(R.id.listWebViewContainerId);} return listWebViewContainerId; }
 
+
+    private RandomUsersApi getNetworkService(Context context) {
+        if(networkComponent==null){
+            networkComponent = DaggerNetworkComponent.builder()
+                    .contextModule(new ContextModule(context))
+                    .networkModule(new NetworkModule())
+                    .okHttpClientModule(new OkHttpClientModule())
+                    .build();
+
+        }
+        return networkComponent.getService();
+    }
+
     /******************************* Constructors **************************************************/
     public DictionaryScreen(@NonNull Context context) {
         super(context);
@@ -156,11 +184,42 @@ public class DictionaryScreen extends FrameLayout {
         setDictionaryFile(context);
         initListView();
         setInitialListState();
+        
+        initCnxNetworkConnection(context);
+
     }
+
+    private void initCnxNetworkConnection(Context context) {
+
+
+        Call<ResponseBody> call = getNetworkService(context).downloadDictionary();
+
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                if (response.isSuccessful()) {
+                    Timber.d(CURRENT_SCREEN, "server contacted and has file");
+
+                    //boolean writtenToDisk = writeResponseBodyToDisk(response.body());
+
+                    //Timber.d(CURRENT_SCREEN, "file download was a success? " + writtenToDisk);
+                } else {
+                    Timber.d(CURRENT_SCREEN, "server contact failed");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Log.e(CURRENT_SCREEN, "error");
+            }
+        });
+        
+    }
+
 
     /** INITIALIZE  List View **/
     private void initListView() {
-        Log.d(CURRENT_SCREEN, "Loading index " + indexIndex);
+        Timber.d(CURRENT_SCREEN, "Loading index " + indexIndex);
         index = dictionary.indices.get(indexIndex);
         getListView().setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         getListView().setEmptyView(findViewById(android.R.id.empty));
@@ -302,7 +361,6 @@ public class DictionaryScreen extends FrameLayout {
 
     /** SET LIST POSITION OF RESULT : Display the position of the result in the list   **/
     private void jumpToRow(final int row) {
-        Log.d("LOG", "jumpToRow: " + row + ", refocusSearchText=" + false);
         getListView().setSelectionFromTop(row, 0);
         getListView().setSelected(true);
     }
@@ -356,16 +414,16 @@ public class DictionaryScreen extends FrameLayout {
 
     private void searchFinished(final SearchOperation searchOperation) {
         if (searchOperation.interrupted.get()) {
-            Log.d(CURRENT_SCREEN, "Search operation was interrupted: " + searchOperation);
+            Timber.d(CURRENT_SCREEN, "Search operation was interrupted: " + searchOperation);
             return;
         }
         if (searchOperation != this.currentSearchOperation) {
-            Log.d(CURRENT_SCREEN, "Stale searchOperation finished: " + searchOperation);
+            Timber.d(CURRENT_SCREEN, "Stale searchOperation finished: " + searchOperation);
             return;
         }
 
         final Index.IndexEntry searchResult = searchOperation.searchResult;
-        Log.d(CURRENT_SCREEN, "searchFinished: " + searchOperation + ", searchResult=" + searchResult);
+        Timber.d(CURRENT_SCREEN, "searchFinished: " + searchOperation + ", searchResult=" + searchResult);
 
         currentSearchOperation = null;
         uiHandler.postDelayed(new Runnable() {
@@ -384,7 +442,7 @@ public class DictionaryScreen extends FrameLayout {
                         throw new IllegalStateException("This should never happen.");
                     }
                 } else {
-                    Log.d(CURRENT_SCREEN, "More coming, waiting for currentSearchOperation.");
+                    Timber.d(CURRENT_SCREEN, "More coming, waiting for currentSearchOperation.");
                 }
             }
         }, 20);
@@ -584,7 +642,7 @@ public class DictionaryScreen extends FrameLayout {
                 @Override
                 public void onClick(View v) {
 
-                    Log.d("CLICK","<------------------- CLICK ------------------->");
+                    //Timber.d("CLICK","<------------------- CLICK ------------------->");
                     //DictionaryActivity.this.onListItemClick(getListView(), v, position, position);
                 }
             });
@@ -686,7 +744,7 @@ public class DictionaryScreen extends FrameLayout {
                     searchTokens = Arrays.asList(searchTokenArray);
                     multiWordSearchResult = index.multiWordSearch(searchText, searchTokens, interrupted);
                 }
-                Log.d(CURRENT_SCREEN,"searchText=" + searchText + ", searchDuration="+ (System.currentTimeMillis() - searchStartMillis)+ ", interrupted=" + interrupted.get());
+                Timber.d(CURRENT_SCREEN,"searchText=" + searchText + ", searchDuration="+ (System.currentTimeMillis() - searchStartMillis)+ ", interrupted=" + interrupted.get());
                 if (!interrupted.get()) {
                     uiHandler.post(new Runnable() {
                         @Override
@@ -695,7 +753,7 @@ public class DictionaryScreen extends FrameLayout {
                         }
                     });
                 } else {
-                    Log.d(CURRENT_SCREEN, "interrupted, skipping searchFinished.");
+                    Timber.d(CURRENT_SCREEN, "interrupted, skipping searchFinished.");
                 }
             } catch (Exception e) {
                 Log.e(CURRENT_SCREEN, "Failure during search (can happen during Activity close): " + e.getMessage());
