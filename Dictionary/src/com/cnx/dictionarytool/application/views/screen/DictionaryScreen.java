@@ -78,10 +78,10 @@ import java.util.regex.Pattern;
 
 public class DictionaryScreen extends FrameLayout {
 
+    private String CURRENT_SCREEN =  DictionaryScreen.this.getClass().getSimpleName();
 
     private DictionaryApplication application;
     private String dictionaryFile = "";
-    private String dictFileTitleName = null;
 
     private FileChannel dictRaf = null;
     private File dictFile = null;
@@ -89,9 +89,6 @@ public class DictionaryScreen extends FrameLayout {
     private Index index = null;
     private int fontSizeSp = 14;
 
-    private boolean clickOpensContextMenu = false;
-    private String selectedSpannableText = null;
-    private int selectedSpannableIndex = -1;
     private final Handler uiHandler = new Handler();
 
     private int indexIndex = 0;
@@ -109,8 +106,9 @@ public class DictionaryScreen extends FrameLayout {
     private TextToSpeech textToSpeech;
 
     String displayText = "";
-
-    private List<RowBase> rowsToShow = null; // if not null, just show these rows.
+    private static final Pattern CHAR_DASH = Pattern.compile("['\\p{L}\\p{M}\\p{N}]+");
+    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+    private List<RowBase> rowsToShow = null;
 
     private SearchOperation currentSearchOperation = null;
 
@@ -123,24 +121,14 @@ public class DictionaryScreen extends FrameLayout {
 
     private DictionaryApplication.Theme theme = DictionaryApplication.Theme.LIGHT;
 
-
-
     private ImageView getSpeakerImageId() { if (speakerIconId == null) { speakerIconId = findViewById(R.id.speakerIconId); } return speakerIconId; }
-
     private TextView getSearchedTextView() { if (searchedNameId == null) { searchedNameId = findViewById(R.id.searchedNameId); } return searchedNameId; }
-
     private WebView getWebView() { if (webView == null) { webView = findViewById(R.id.webView); } return webView; }
-
     private LinearLayout getRootId() { if (rootId == null) { rootId = findViewById(R.id.rootId); } return rootId; }
-
     private ListView getListView() { if (listView == null) { listView = findViewById(android.R.id.list); } return listView; }
-
     private EditText getSearchView() { if (searchId == null) { searchId = findViewById(R.id.searchId); } return searchId; }
-
     private View getListContainer() {  if (listContainerId == null) { listContainerId = findViewById(R.id.listContainerId);} return listContainerId; }
-
     private View getEmptyContainer() { if (listNoDataContainerId == null) { listNoDataContainerId = findViewById(R.id.listNoDataContainerId); } return listNoDataContainerId; }
-
     private View getWebViewContainer() {  if (listWebViewContainerId == null) { listWebViewContainerId = findViewById(R.id.listWebViewContainerId);} return listWebViewContainerId; }
 
 
@@ -167,7 +155,7 @@ public class DictionaryScreen extends FrameLayout {
     /******************************* Constructors **************************************************/
 
 
-
+    /******************************* Init functions  ***********************************************/
     private void initScreen(Context context) {
         this.context = context;
         DictionaryApplication.INSTANCE.init(context);
@@ -181,6 +169,63 @@ public class DictionaryScreen extends FrameLayout {
         setInitialListState();
     }
 
+    private void initListView() {
+        Log.d(CURRENT_SCREEN, "Loading index " + indexIndex);
+        index = dictionary.indices.get(indexIndex);
+        getListView().setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        getListView().setEmptyView(findViewById(android.R.id.empty));
+        getListView().setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int row, long id) { onListItemClick(getListView(), view, row, id);    }
+        });
+        setListAdapter(new IndexAdapter(index));
+    }
+
+    /** Init web view **/
+    private void initWebView(String mhtml, String displayText) {
+        String formattedWebView =  mhtml.replaceAll("<h1>.*</h1>", "");
+
+        getSearchedTextView().setText(displayText);
+        getSearchedTextView().setText(displayText.substring(0, 1).toUpperCase() + displayText.substring(1).toLowerCase());
+
+        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        final String fontSize = prefs.getString(context.getString(R.string.fontSizeKey), "14");
+        int fontSizeSp;
+        try {
+            fontSizeSp = Integer.parseInt(fontSize.trim());
+        } catch (NumberFormatException e) {
+            fontSizeSp = 14;
+        }
+        getWebView().getSettings().setDefaultFontSize(fontSizeSp);
+        try {
+            // No way to get pure UTF-8 data into WebView
+            formattedWebView = Base64.encodeToString(formattedWebView.getBytes("UTF-8"), Base64.DEFAULT);
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException("Missing UTF-8 support?!", e);
+        }
+        // Use loadURL to allow specifying a charset
+        getWebView().loadUrl("data:text/html;charset=utf-8;base64," + formattedWebView);
+
+
+        getEmptyContainer().setVisibility(View.GONE);
+        getListContainer().setVisibility(View.GONE);
+        getWebViewContainer().setVisibility(View.VISIBLE);
+        getRootId().requestLayout();
+    }
+    /******************************* Init functions  ***********************************************/
+
+    /** Finding  all the views in screen **/
+    private void findViewsInScreen() {
+        getListView();
+        getSearchView();
+        getEmptyContainer();
+        getListContainer();
+        getWebView();
+        getWebViewContainer();
+        getSearchedTextView();
+    }
+
+    /** LISTENERS: Set all the listeners for the dictionary **/
     private void setListener() {
         getSearchView().addTextChangedListener(new TextWatcher() {
 
@@ -218,6 +263,7 @@ public class DictionaryScreen extends FrameLayout {
         });
     }
 
+    /** DICTIONARY: Get the  dictionary from the storage to current class **/
     private void setDictionaryFile(Context context) {
         dictionaryFile = new CopyAssets(context).getDictionaryFileUri();
         if (dictRaf == null){
@@ -225,7 +271,6 @@ public class DictionaryScreen extends FrameLayout {
         }
         try {
             if (dictRaf == null) {
-                dictFileTitleName = application.getDictionaryName(dictFile.getName());
                 dictRaf = new RandomAccessFile(dictFile, "r").getChannel();
             }
             dictionary = new Dictionary(dictRaf);
@@ -245,40 +290,124 @@ public class DictionaryScreen extends FrameLayout {
         defocusSearchText();
     }
 
-    private void initListView() {
-        Log.d("LOG", "Loading index " + indexIndex);
-        index = dictionary.indices.get(indexIndex);
-        getListView().setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
-        getListView().setEmptyView(findViewById(android.R.id.empty));
-        getListView().setOnItemClickListener(new AdapterView.OnItemClickListener() {
+    private void onSearchTextChange(final String text) {
+
+        if(text.length()>3||text.length()==3){
+            //Set the container states
+            getEmptyContainer().setVisibility(View.GONE);
+            getListContainer().setVisibility(View.VISIBLE);
+            //Perform search
+            currentSearchOperation = new SearchOperation(text, index);
+            searchExecutor.execute(currentSearchOperation);
+        }else{
+            //Set the container states
+            getEmptyContainer().setVisibility(View.VISIBLE);
+            getListContainer().setVisibility(View.GONE);
+        }
+
+    }
+
+    private void defocusSearchText() {  getListView().requestFocus(); }
+
+    private void createTokenLinkSpans(final TextView textView, final Spannable spannable, final String text) {
+        // Saw from the source code that LinkMovementMethod sets the selection!
+        textView.setMovementMethod(LinkMovementMethod.getInstance());
+        final Matcher matcher = CHAR_DASH.matcher(text);
+        while (matcher.find()) {
+            spannable.setSpan(new NonLinkClickableSpan(), matcher.start(),
+                    matcher.end(),
+                    Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
+        }
+    }
+
+    private boolean isFiltered() {  return rowsToShow != null; }
+
+    private void searchFinished(final SearchOperation searchOperation) {
+        if (searchOperation.interrupted.get()) {
+            Log.d(CURRENT_SCREEN, "Search operation was interrupted: " + searchOperation);
+            return;
+        }
+        if (searchOperation != this.currentSearchOperation) {
+            Log.d(CURRENT_SCREEN, "Stale searchOperation finished: " + searchOperation);
+            return;
+        }
+
+        final Index.IndexEntry searchResult = searchOperation.searchResult;
+        Log.d(CURRENT_SCREEN, "searchFinished: " + searchOperation + ", searchResult=" + searchResult);
+
+        currentSearchOperation = null;
+        uiHandler.postDelayed(new Runnable() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int row, long id) {
-                onListItemClick(getListView(), view, row, id);
+            public void run() {
+                if (currentSearchOperation == null) {
+                    if (searchResult != null) {
+                        if (isFiltered()) {
+                            clearFiltered();
+                        }
+                        jumpToRow(searchResult.startRow);
+                    } else if (searchOperation.multiWordSearchResult != null) {
+                        // Multi-row search....
+                        setFiltered(searchOperation);
+                    } else {
+                        throw new IllegalStateException("This should never happen.");
+                    }
+                } else {
+                    Log.d(CURRENT_SCREEN, "More coming, waiting for currentSearchOperation.");
+                }
             }
-        });
+        }, 20);
+    }
+
+    private void clearFiltered() {
         setListAdapter(new IndexAdapter(index));
+        rowsToShow = null;
     }
 
-    private void defocusSearchText() {
-        getListView().requestFocus();
+    private void setFiltered(final SearchOperation searchOperation) {
+        rowsToShow = searchOperation.multiWordSearchResult;
+        setListAdapter(new IndexAdapter(index, rowsToShow, searchOperation.searchTokens));
+    }
+
+    private void jumpToRow(final int row) {
+        Log.d("LOG", "jumpToRow: " + row + ", refocusSearchText=" + false);
+        getListView().setSelectionFromTop(row, 0);
+        getListView().setSelected(true);
+    }
+
+    /** Set the initial state of the list result, after getting the data from the database **/
+    private void setInitialListState() {
+        TransliteratorManager.init(new TransliteratorManager.Callback() {
+            @Override
+            public void onTransliteratorReady() {
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        onSearchTextChange("");
+                    }
+                });
+            }
+        }, DictionaryApplication.threadBackground);
+    }
+
+    /** She the Webview **/
+    private void showHtml(final List<HtmlEntry> htmlEntries, final String htmlTextToHighlight) {
+        String html = HtmlEntry.htmlBody(htmlEntries, index.shortName);
+        String mData = String.format("<html><head><meta name=\"viewport\" content=\"width=device-width\"></head><body>%s</body></html>", html);
+        displayText = html;
+        displayText = StringUtils.substringBefore(html.substring(22), "\"");
+        String formattedData = displayText.replaceAll(Pattern.quote("+"), " ");
+        displayText = formattedData;
+        initWebView(mData,formattedData);
     }
 
 
+    /** ******************************************** CLASS IMPLEMENTATIONS ******************************************** **/
+    /** Adapter class:: This class is used to display the row elements in dictionary list **/
     final class IndexAdapter extends BaseAdapter {
 
-        private static final float PADDING_DEFAULT_DP = 8;
-
-        private static final float PADDING_LARGE_DP = 16;
-
         final Index index;
-
         final List<RowBase> rows;
-
         final Set<String> toHighlight;
-
-        private int mPaddingDefault;
-
-        private int mPaddingLarge;
 
         IndexAdapter(final Index index) {
             this.index = index;
@@ -375,7 +504,6 @@ public class DictionaryScreen extends FrameLayout {
 
             for (int r = result.getChildCount(); r < rowCount; ++r) {
                 final TableRow.LayoutParams layoutParams = new TableRow.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT);
-                layoutParams.leftMargin = mPaddingLarge;
 
                 final TableRow tableRow = new TableRow(result.getContext());
 
@@ -397,13 +525,6 @@ public class DictionaryScreen extends FrameLayout {
                 col2.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp);
                 // col2.setBackgroundResource(theme.otherLangBg);
 
-                if (index.swapPairEntries) {
-                    col2.setOnLongClickListener(textViewLongClickListenerIndex0);
-                    col1.setOnLongClickListener(textViewLongClickListenerIndex1);
-                } else {
-                    col1.setOnLongClickListener(textViewLongClickListenerIndex0);
-                    col2.setOnLongClickListener(textViewLongClickListenerIndex1);
-                }
 
                 // Set the columns in the table.
                 if (r == 0) {
@@ -477,13 +598,6 @@ public class DictionaryScreen extends FrameLayout {
             final Context context = parent.getContext();
             if (textView == null) {
                 textView = new TextView(context);
-                // set up things invariant across one ItemViewType
-                // ItemViewTypes handled here are:
-                // 2: isTokenRow == true, htmlEntries.isEmpty() == true
-                // 3: isTokenRow == true, htmlEntries.isEmpty() == false
-                // 4: isTokenRow == false, htmlEntries.isEmpty() == false
-                textView.setPadding(isTokenRow ? mPaddingDefault : mPaddingLarge, mPaddingDefault, mPaddingDefault, 0);
-                textView.setOnLongClickListener(indexIndex > 0 ? textViewLongClickListenerIndex1 : textViewLongClickListenerIndex0);
                 textView.setLongClickable(true);
 
                 textView.setTypeface(Typeface.DEFAULT);
@@ -542,175 +656,35 @@ public class DictionaryScreen extends FrameLayout {
 
     }
 
-    private static final Pattern CHAR_DASH = Pattern.compile("['\\p{L}\\p{M}\\p{N}]+");
-
-    private void createTokenLinkSpans(final TextView textView, final Spannable spannable,
-                                      final String text) {
-        // Saw from the source code that LinkMovementMethod sets the selection!
-        // http://grepcode.com/file/repository.grepcode.com/java/ext/com.google.android/android/2.3.1_r1/android/text/method/LinkMovementMethod.java#LinkMovementMethod
-        textView.setMovementMethod(LinkMovementMethod.getInstance());
-        final Matcher matcher = CHAR_DASH.matcher(text);
-        while (matcher.find()) {
-            spannable.setSpan(new NonLinkClickableSpan(), matcher.start(),
-                    matcher.end(),
-                    Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
-        }
-    }
-
-
-
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        selectedSpannableText = null;
-        selectedSpannableIndex = -1;
-        return super.onTouchEvent(event);
-    }
-
-    private class TextViewLongClickListener implements OnLongClickListener {
-        final int index;
-
-        private TextViewLongClickListener(final int index) {
-            this.index = index;
-        }
-
-        @Override
-        public boolean onLongClick(final View v) {
-            final TextView textView = (TextView) v;
-            final int start = textView.getSelectionStart();
-            final int end = textView.getSelectionEnd();
-            if (start >= 0 && end >= 0) {
-                selectedSpannableText = textView.getText().subSequence(start, end).toString();
-                selectedSpannableIndex = index;
-            }
-            return false;
-        }
-    }
-
-    private final TextViewLongClickListener textViewLongClickListenerIndex0 = new TextViewLongClickListener(
-            0);
-
-    private final TextViewLongClickListener textViewLongClickListenerIndex1 = new TextViewLongClickListener(
-            1);
-
-    private void onSearchTextChange(final String text) {
-
-        if(text.length()>3||text.length()==3){
-            //Set the container states
-            getEmptyContainer().setVisibility(View.GONE);
-            getListContainer().setVisibility(View.VISIBLE);
-            //Perform search
-            currentSearchOperation = new SearchOperation(text, index);
-            searchExecutor.execute(currentSearchOperation);
-        }else{
-            //Set the container states
-            getEmptyContainer().setVisibility(View.VISIBLE);
-            getListContainer().setVisibility(View.GONE);
-        }
-
-    }
-
-    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
-
-    private boolean isFiltered() {
-        return rowsToShow != null;
-    }
-
-    private void searchFinished(final SearchOperation searchOperation) {
-        if (searchOperation.interrupted.get()) {
-            Log.d("LOG", "Search operation was interrupted: " + searchOperation);
-            return;
-        }
-        if (searchOperation != this.currentSearchOperation) {
-            Log.d("LOG", "Stale searchOperation finished: " + searchOperation);
-            return;
-        }
-
-        final Index.IndexEntry searchResult = searchOperation.searchResult;
-        Log.d("LOG", "searchFinished: " + searchOperation + ", searchResult=" + searchResult);
-
-        currentSearchOperation = null;
-        uiHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                if (currentSearchOperation == null) {
-                    if (searchResult != null) {
-                        if (isFiltered()) {
-                            clearFiltered();
-                        }
-                        jumpToRow(searchResult.startRow);
-                    } else if (searchOperation.multiWordSearchResult != null) {
-                        // Multi-row search....
-                        setFiltered(searchOperation);
-                    } else {
-                        throw new IllegalStateException("This should never happen.");
-                    }
-                } else {
-                    Log.d("LOG", "More coming, waiting for currentSearchOperation.");
-                }
-            }
-        }, 20);
-    }
-
-    private void clearFiltered() {
-        setListAdapter(new IndexAdapter(index));
-        rowsToShow = null;
-    }
-
-    private void setFiltered(final SearchOperation searchOperation) {
-        rowsToShow = searchOperation.multiWordSearchResult;
-        setListAdapter(new IndexAdapter(index, rowsToShow, searchOperation.searchTokens));
-    }
-
-    private final void jumpToRow(final int row) {
-        Log.d("LOG", "jumpToRow: " + row + ", refocusSearchText=" + false);
-        // getListView().requestFocusFromTouch();
-        getListView().setSelectionFromTop(row, 0);
-        getListView().setSelected(true);
-    }
-
+    /** Search Operation::  This class runs a separate thread to get the data from the db file  **/
     final class SearchOperation implements Runnable {
 
-        final AtomicBoolean interrupted = new AtomicBoolean(false);
-
-        final String searchText;
-
-        List<String> searchTokens; // filled in for multiWord.
-
-        final Index index;
-
-        long searchStartMillis;
-
-        Index.IndexEntry searchResult;
-
-        List<RowBase> multiWordSearchResult;
-
-        boolean done = false;
+        private final AtomicBoolean interrupted = new AtomicBoolean(false);
+        private final String searchText;
+        private List<String> searchTokens;
+        private final Index index;
+        private Index.IndexEntry searchResult;
+        private List<RowBase> multiWordSearchResult;
 
         SearchOperation(final String searchText, final Index index) {
             this.searchText = StringUtil.normalizeWhitespace(searchText);
             this.index = index;
         }
 
-        public String toString() {
-            return String.format("SearchOperation(%s,%s)", searchText, interrupted.toString());
-        }
+        public String toString() { return String.format("SearchOperation(%s,%s)", searchText, interrupted.toString());  }
 
         @Override
         public void run() {
             try {
-                searchStartMillis = System.currentTimeMillis();
+                long searchStartMillis = System.currentTimeMillis();
                 final String[] searchTokenArray = WHITESPACE.split(searchText);
                 if (searchTokenArray.length == 1) {
                     searchResult = index.findInsertionPoint(searchText, interrupted);
                 } else {
                     searchTokens = Arrays.asList(searchTokenArray);
-                    multiWordSearchResult = index.multiWordSearch(searchText, searchTokens,
-                            interrupted);
+                    multiWordSearchResult = index.multiWordSearch(searchText, searchTokens, interrupted);
                 }
-                Log.d("LOG",
-                        "searchText=" + searchText + ", searchDuration="
-                                + (System.currentTimeMillis() - searchStartMillis)
-                                + ", interrupted=" + interrupted.get());
+                Log.d(CURRENT_SCREEN,"searchText=" + searchText + ", searchDuration="+ (System.currentTimeMillis() - searchStartMillis)+ ", interrupted=" + interrupted.get());
                 if (!interrupted.get()) {
                     uiHandler.post(new Runnable() {
                         @Override
@@ -719,86 +693,16 @@ public class DictionaryScreen extends FrameLayout {
                         }
                     });
                 } else {
-                    Log.d("LOG", "interrupted, skipping searchFinished.");
+                    Log.d(CURRENT_SCREEN, "interrupted, skipping searchFinished.");
                 }
             } catch (Exception e) {
-                Log.e("LOG", "Failure during search (can happen during Activity close): " + e.getMessage());
+                Log.e(CURRENT_SCREEN, "Failure during search (can happen during Activity close): " + e.getMessage());
             } finally {
                 synchronized (this) {
-                    done = true;
                     this.notifyAll();
                 }
             }
         }
     }
-
-    private void findViewsInScreen() {
-        getListView();
-        getSearchView();
-        getEmptyContainer();
-        getListContainer();
-        getWebView();
-        getWebViewContainer();
-        getSearchedTextView();
-    }
-
-    private void setInitialListState() {
-        TransliteratorManager.init(new TransliteratorManager.Callback() {
-            @Override
-            public void onTransliteratorReady() {
-                uiHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        onSearchTextChange("");
-                    }
-                });
-            }
-        }, DictionaryApplication.threadBackground);
-    }
-
-    private void showHtml(final List<HtmlEntry> htmlEntries, final String htmlTextToHighlight) {
-        String html = HtmlEntry.htmlBody(htmlEntries, index.shortName);
-
-        String mData = String.format(
-                "<html><head><meta name=\"viewport\" content=\"width=device-width\"></head><body>%s</body></html>", html);
-        String myString = "Hello+World+How are you";
-        displayText = html;
-        displayText = StringUtils.substringBefore(html.substring(22), "\"");
-        String formattedData = displayText.replaceAll(Pattern.quote("+"), " ");
-        displayText = formattedData;
-
-        initWebView(mData,formattedData);
-
-    }
-
-    private void initWebView(String mhtml, String displayText) {
-        String formattedWebView =  mhtml.replaceAll("<h1>.*</h1>", "");
-
-        getSearchedTextView().setText(displayText);
-        getSearchedTextView().setText(displayText.substring(0, 1).toUpperCase() + displayText.substring(1).toLowerCase());
-
-        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        final String fontSize = prefs.getString(context.getString(R.string.fontSizeKey), "14");
-        int fontSizeSp;
-        try {
-            fontSizeSp = Integer.parseInt(fontSize.trim());
-        } catch (NumberFormatException e) {
-            fontSizeSp = 14;
-        }
-        getWebView().getSettings().setDefaultFontSize(fontSizeSp);
-        try {
-            // No way to get pure UTF-8 data into WebView
-            formattedWebView = Base64.encodeToString(formattedWebView.getBytes("UTF-8"), Base64.DEFAULT);
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException("Missing UTF-8 support?!", e);
-        }
-        // Use loadURL to allow specifying a charset
-        getWebView().loadUrl("data:text/html;charset=utf-8;base64," + formattedWebView);
-
-
-        getEmptyContainer().setVisibility(View.GONE);
-        getListContainer().setVisibility(View.GONE);
-        getWebViewContainer().setVisibility(View.VISIBLE);
-        getRootId().requestLayout();
-    }
+    /** ******************************************** CLASS IMPLEMENTATIONS ******************************************** **/
 }
