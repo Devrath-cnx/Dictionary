@@ -19,15 +19,13 @@ import android.widget.TextView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.cnx.dictionarytool.R;
-import com.cnx.dictionarytool.application.views.models.DictonaryData;
-import com.cnx.dictionarytool.library.activities.DictionaryApplication;
-import com.cnx.dictionarytool.library.activities.HtmlDisplayActivity;
-import com.cnx.dictionarytool.library.util.collections.NonLinkClickableSpan;
-import com.cnx.dictionarytool.library.util.engine.HtmlEntry;
-import com.cnx.dictionarytool.library.util.engine.Index;
-import com.cnx.dictionarytool.library.util.engine.PairEntry;
-import com.cnx.dictionarytool.library.util.engine.RowBase;
-import com.cnx.dictionarytool.library.util.engine.TokenRow;
+import com.cnx.dictionarytool.library.others.DictionaryApplication;
+import com.cnx.dictionarytool.library.collections.NonLinkClickableSpan;
+import com.cnx.dictionarytool.library.engine.HtmlEntry;
+import com.cnx.dictionarytool.library.engine.Index;
+import com.cnx.dictionarytool.library.engine.PairEntry;
+import com.cnx.dictionarytool.library.engine.RowBase;
+import com.cnx.dictionarytool.library.engine.TokenRow;
 
 import org.jetbrains.annotations.NotNull;
 

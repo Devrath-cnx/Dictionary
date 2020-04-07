@@ -15,14 +15,13 @@ import androidx.recyclerview.widget.RecyclerView
 import com.cnx.dictionarytool.R
 import com.cnx.dictionarytool.application.utils.CopyAssets
 import com.cnx.dictionarytool.application.views.adapters.AdptRecommendation
-import com.cnx.dictionarytool.application.views.models.DictonaryData
-import com.cnx.dictionarytool.library.activities.DictionaryApplication
-import com.cnx.dictionarytool.library.util.collections.StringUtil
-import com.cnx.dictionarytool.library.util.engine.Dictionary
-import com.cnx.dictionarytool.library.util.engine.Index
-import com.cnx.dictionarytool.library.util.engine.Index.IndexEntry
-import com.cnx.dictionarytool.library.util.engine.RowBase
-import com.cnx.dictionarytool.library.util.engine.TransliteratorManager
+import com.cnx.dictionarytool.library.others.DictionaryApplication
+import com.cnx.dictionarytool.library.collections.StringUtil
+import com.cnx.dictionarytool.library.engine.Dictionary
+import com.cnx.dictionarytool.library.engine.Index
+import com.cnx.dictionarytool.library.engine.Index.IndexEntry
+import com.cnx.dictionarytool.library.engine.RowBase
+import com.cnx.dictionarytool.library.engine.TransliteratorManager
 import kotlinx.android.synthetic.main.fragment_base_dictionary.view.*
 import java.io.File
 import java.io.IOException
@@ -32,7 +31,6 @@ import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.regex.Pattern
-import kotlin.collections.ArrayList
 
 
 class DictionaryBaseView : FrameLayout {
