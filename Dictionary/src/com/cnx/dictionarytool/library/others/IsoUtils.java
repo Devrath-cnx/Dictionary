@@ -196,10 +196,7 @@ public enum IsoUtils {
         }
     }
 
-    public int getFlagIdForIsoCode(final String isoCode) {
-        LanguageResources res = isoCodeToResources.get(isoCode);
-        return res == null ? 0 : res.flagId;
-    }
+
 
     public String isoCodeToLocalizedLanguageName(final Context context, final String isoCode) {
         String lang = new Locale(isoCode).getDisplayLanguage();
@@ -215,44 +212,6 @@ public enum IsoUtils {
         return lang;
     }
 
-    public View createButton(final Context context,
-                             final IndexInfo indexInfo, int size) {
-        LanguageResources languageResources = isoCodeToResources.get(indexInfo.shortName);
-        View result;
 
-        if (languageResources == null || languageResources.flagId <= 0) {
-            Button button = new Button(context);
-            button.setText(indexInfo.shortName);
-            result = button;
-        } else {
-            ImageButton button = new ImageButton(context);
-            button.setImageResource(languageResources.flagId);
-            button.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            result = button;
-        }
-        result.setLayoutParams(new LinearLayout.LayoutParams(size, size * 2 / 3));
-        return result;
-    }
 
-    public View setupButton(Button textButton, ImageButton imageButton,
-                            final IndexInfo indexInfo) {
-        LanguageResources languageResources = isoCodeToResources.get(indexInfo.shortName);
-        View result;
-
-        if (languageResources == null || languageResources.flagId <= 0) {
-            textButton.setText(indexInfo.shortName);
-            textButton.setVisibility(View.VISIBLE);
-            imageButton.setVisibility(View.GONE);
-            result = textButton;
-        } else {
-            imageButton.setImageResource(languageResources.flagId);
-            imageButton.setContentDescription(isoCodeToLocalizedLanguageName(imageButton.getContext(), indexInfo.shortName));
-            imageButton.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            textButton.setVisibility(View.GONE);
-            imageButton.setVisibility(View.VISIBLE);
-            result = imageButton;
-        }
-        // Assume dimensions have been set before in Layout
-        return result;
-    }
 }
