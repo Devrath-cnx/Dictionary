@@ -763,10 +763,11 @@ public class DictionaryScreen extends FrameLayout {
                 "<html><head><meta name=\"viewport\" content=\"width=device-width\"></head><body>%s</body></html>", html);
         String myString = "Hello+World+How are you";
         displayText = html;
-        displayText = StringUtils.substringBefore(displayText.substring(22), "\"");
-        displayText.replace("+"," ");
+        displayText = StringUtils.substringBefore(html.substring(22), "\"");
+        String formattedData = displayText.replaceAll(Pattern.quote("+"), " ");
+        displayText = formattedData;
 
-        initWebView(mData,displayText);
+        initWebView(mData,formattedData);
 
     }
 
