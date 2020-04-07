@@ -478,8 +478,14 @@ public class DictionaryScreen extends FrameLayout {
         private TableLayout getView(final int position, PairEntry.Row row, ViewGroup parent,
                                     TableLayout result) {
             final Context context = parent.getContext();
+
+            Typeface type = Typeface.createFromAsset(context.getAssets(),"fonts/Poppins-Regular.ttf");
+
+
             final PairEntry entry = row.getEntry();
             final int rowCount = entry.pairs.size();
+
+
             if (result == null) {
                 result = new TableLayout(context);
                 result.setStretchAllColumns(true);
@@ -513,8 +519,8 @@ public class DictionaryScreen extends FrameLayout {
                 col1.setWidth(1);
                 col2.setWidth(1);
 
-                col1.setTypeface(Typeface.DEFAULT);
-                col2.setTypeface(Typeface.DEFAULT);
+                col1.setTypeface(type);
+                col2.setTypeface(type);
                 col1.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp);
                 col2.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp);
                 // col2.setBackgroundResource(theme.otherLangBg);
@@ -590,11 +596,13 @@ public class DictionaryScreen extends FrameLayout {
                                                         final String text, final boolean hasMainEntry, final List<HtmlEntry> htmlEntries,
                                                         final String htmlTextToHighlight, ViewGroup parent, TextView textView) {
             final Context context = parent.getContext();
+
+            Typeface type = Typeface.createFromAsset(context.getAssets(),"fonts/Poppins-Regular.ttf");
+
             if (textView == null) {
                 textView = new TextView(context);
                 textView.setLongClickable(true);
-
-                textView.setTypeface(Typeface.DEFAULT);
+                textView.setTypeface(type);
                 if (isTokenRow) {
                     textView.setTextAppearance(context, theme.tokenRowFg);
                     textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 4 * fontSizeSp / 3);

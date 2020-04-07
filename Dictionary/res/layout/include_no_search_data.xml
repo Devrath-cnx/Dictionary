@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:src="@drawable/ic_icon_large_search" />
 
-    <TextView
+    <com.cnx.dictionarytool.application.utils.CustTxtVwPoppinsRegular
         android:layout_marginTop="15dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
