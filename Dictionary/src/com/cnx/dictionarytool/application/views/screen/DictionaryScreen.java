@@ -131,12 +131,6 @@ public class DictionaryScreen extends FrameLayout {
     private View getEmptyContainer() { if (listNoDataContainerId == null) { listNoDataContainerId = findViewById(R.id.listNoDataContainerId); } return listNoDataContainerId; }
     private View getWebViewContainer() {  if (listWebViewContainerId == null) { listWebViewContainerId = findViewById(R.id.listWebViewContainerId);} return listWebViewContainerId; }
 
-
-    private void setListAdapter(ListAdapter adapter) {
-        getListView().setAdapter(adapter);
-        getRootId().requestLayout();
-    }
-
     /******************************* Constructors **************************************************/
     public DictionaryScreen(@NonNull Context context) {
         super(context);
@@ -156,6 +150,7 @@ public class DictionaryScreen extends FrameLayout {
 
 
     /******************************* Init functions  ***********************************************/
+    /** INITIALIZE  Entire Screen **/
     private void initScreen(Context context) {
         this.context = context;
         DictionaryApplication.INSTANCE.init(context);
@@ -169,6 +164,7 @@ public class DictionaryScreen extends FrameLayout {
         setInitialListState();
     }
 
+    /** INITIALIZE  List View **/
     private void initListView() {
         Log.d(CURRENT_SCREEN, "Loading index " + indexIndex);
         index = dictionary.indices.get(indexIndex);
@@ -181,7 +177,7 @@ public class DictionaryScreen extends FrameLayout {
         setListAdapter(new IndexAdapter(index));
     }
 
-    /** Init web view **/
+    /** INITIALIZE Web View  **/
     private void initWebView(String mhtml, String displayText) {
         String formattedWebView =  mhtml.replaceAll("<h1>.*</h1>", "");
 
@@ -286,10 +282,7 @@ public class DictionaryScreen extends FrameLayout {
         }
     }
 
-    private void onListItemClick(ListView l, View v, int rowIdx, long id) {
-        defocusSearchText();
-    }
-
+    /** ON TEXT CHANGE : Handle the  visibility of containers based on visibility **/
     private void onSearchTextChange(final String text) {
 
         if(text.length()>3||text.length()==3){
@@ -307,7 +300,52 @@ public class DictionaryScreen extends FrameLayout {
 
     }
 
-    private void defocusSearchText() {  getListView().requestFocus(); }
+    /** RESET FILTERED LIST : Change the result of list base on data changed in edit view  **/
+    private void setFiltered(final SearchOperation searchOperation) {
+        rowsToShow = searchOperation.multiWordSearchResult;
+        setListAdapter(new IndexAdapter(index, rowsToShow, searchOperation.searchTokens));
+    }
+
+    /** SET LIST POSITION OF RESULT : Display the position of the result in the list   **/
+    private void jumpToRow(final int row) {
+        Log.d("LOG", "jumpToRow: " + row + ", refocusSearchText=" + false);
+        getListView().setSelectionFromTop(row, 0);
+        getListView().setSelected(true);
+    }
+
+    /** SET THE LIST ADAPTER : Set the adapter of the list **/
+    private void setListAdapter(ListAdapter adapter) {
+        getListView().setAdapter(adapter);
+        getRootId().requestLayout();
+    }
+
+    /** Set the initial state of the list result, after getting the data from the database **/
+    private void setInitialListState() {
+        TransliteratorManager.init(new TransliteratorManager.Callback() {
+            @Override
+            public void onTransliteratorReady() {
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        onSearchTextChange("");
+                    }
+                });
+            }
+        }, DictionaryApplication.threadBackground);
+    }
+
+    /** She the Webview **/
+    private void showHtml(final List<HtmlEntry> htmlEntries, final String htmlTextToHighlight) {
+        String html = HtmlEntry.htmlBody(htmlEntries, index.shortName);
+        String mData = String.format("<html><head><meta name=\"viewport\" content=\"width=device-width\"></head><body>%s</body></html>", html);
+        displayText = html;
+        displayText = StringUtils.substringBefore(html.substring(22), "\"");
+        String formattedData = displayText.replaceAll(Pattern.quote("+"), " ");
+        displayText = formattedData;
+        initWebView(mData,formattedData);
+    }
+
+    private void onListItemClick(ListView l, View v, int rowIdx, long id) { getListView().requestFocus(); }
 
     private void createTokenLinkSpans(final TextView textView, final Spannable spannable, final String text) {
         // Saw from the source code that LinkMovementMethod sets the selection!
@@ -362,44 +400,6 @@ public class DictionaryScreen extends FrameLayout {
         setListAdapter(new IndexAdapter(index));
         rowsToShow = null;
     }
-
-    private void setFiltered(final SearchOperation searchOperation) {
-        rowsToShow = searchOperation.multiWordSearchResult;
-        setListAdapter(new IndexAdapter(index, rowsToShow, searchOperation.searchTokens));
-    }
-
-    private void jumpToRow(final int row) {
-        Log.d("LOG", "jumpToRow: " + row + ", refocusSearchText=" + false);
-        getListView().setSelectionFromTop(row, 0);
-        getListView().setSelected(true);
-    }
-
-    /** Set the initial state of the list result, after getting the data from the database **/
-    private void setInitialListState() {
-        TransliteratorManager.init(new TransliteratorManager.Callback() {
-            @Override
-            public void onTransliteratorReady() {
-                uiHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        onSearchTextChange("");
-                    }
-                });
-            }
-        }, DictionaryApplication.threadBackground);
-    }
-
-    /** She the Webview **/
-    private void showHtml(final List<HtmlEntry> htmlEntries, final String htmlTextToHighlight) {
-        String html = HtmlEntry.htmlBody(htmlEntries, index.shortName);
-        String mData = String.format("<html><head><meta name=\"viewport\" content=\"width=device-width\"></head><body>%s</body></html>", html);
-        displayText = html;
-        displayText = StringUtils.substringBefore(html.substring(22), "\"");
-        String formattedData = displayText.replaceAll(Pattern.quote("+"), " ");
-        displayText = formattedData;
-        initWebView(mData,formattedData);
-    }
-
 
     /** ******************************************** CLASS IMPLEMENTATIONS ******************************************** **/
     /** Adapter class:: This class is used to display the row elements in dictionary list **/
