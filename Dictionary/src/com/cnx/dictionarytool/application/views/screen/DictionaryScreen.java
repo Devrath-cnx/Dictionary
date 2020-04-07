@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.speech.tts.TextToSpeech;
 import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -28,6 +29,7 @@ import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListAdapter;
 import android.widget.ListView;
@@ -53,6 +55,9 @@ import com.cnx.dictionarytool.library.util.engine.RowBase;
 import com.cnx.dictionarytool.library.util.engine.TokenRow;
 import com.cnx.dictionarytool.library.util.engine.TransliteratorManager;
 
+import org.apache.commons.lang3.StringUtils;
+import org.w3c.dom.Text;
+
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
@@ -61,6 +66,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -97,6 +103,12 @@ public class DictionaryScreen extends FrameLayout {
     private LinearLayout rootId;
     private ListView listView;
     private WebView webView;
+    private TextView searchedNameId;
+    private ImageView speakerIconId;
+
+    private TextToSpeech textToSpeech;
+
+    String displayText = "";
 
     private List<RowBase> rowsToShow = null; // if not null, just show these rows.
 
@@ -111,6 +123,11 @@ public class DictionaryScreen extends FrameLayout {
 
     private DictionaryApplication.Theme theme = DictionaryApplication.Theme.LIGHT;
 
+
+
+    private ImageView getSpeakerImageId() { if (speakerIconId == null) { speakerIconId = findViewById(R.id.speakerIconId); } return speakerIconId; }
+
+    private TextView getSearchedTextView() { if (searchedNameId == null) { searchedNameId = findViewById(R.id.searchedNameId); } return searchedNameId; }
 
     private WebView getWebView() { if (webView == null) { webView = findViewById(R.id.webView); } return webView; }
 
@@ -181,6 +198,22 @@ public class DictionaryScreen extends FrameLayout {
         webView.setWebViewClient(new WebViewClient(){
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 return true;
+            }
+        });
+
+        textToSpeech= new TextToSpeech(context, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if(status != TextToSpeech.ERROR) {
+                    textToSpeech.setLanguage(Locale.UK);
+                }
+            }
+        });
+
+        getSpeakerImageId().setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                textToSpeech.speak(displayText, TextToSpeech.QUEUE_FLUSH, null);
             }
         });
     }
@@ -706,6 +739,7 @@ public class DictionaryScreen extends FrameLayout {
         getListContainer();
         getWebView();
         getWebViewContainer();
+        getSearchedTextView();
     }
 
     private void setInitialListState() {
@@ -727,12 +761,21 @@ public class DictionaryScreen extends FrameLayout {
 
         String mData = String.format(
                 "<html><head><meta name=\"viewport\" content=\"width=device-width\"></head><body>%s</body></html>", html);
+        String myString = "Hello+World+How are you";
+        displayText = html;
+        displayText = StringUtils.substringBefore(displayText.substring(22), "\"");
+        displayText.replace("+"," ");
 
-        initWebView(mData);
+        initWebView(mData,displayText);
 
     }
 
-    private void initWebView(String html) {
+    private void initWebView(String mhtml, String displayText) {
+        String formattedWebView =  mhtml.replaceAll("<h1>.*</h1>", "");
+
+        getSearchedTextView().setText(displayText);
+        getSearchedTextView().setText(displayText.substring(0, 1).toUpperCase() + displayText.substring(1).toLowerCase());
+
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         final String fontSize = prefs.getString(context.getString(R.string.fontSizeKey), "14");
         int fontSizeSp;
@@ -744,12 +787,12 @@ public class DictionaryScreen extends FrameLayout {
         getWebView().getSettings().setDefaultFontSize(fontSizeSp);
         try {
             // No way to get pure UTF-8 data into WebView
-            html = Base64.encodeToString(html.getBytes("UTF-8"), Base64.DEFAULT);
+            formattedWebView = Base64.encodeToString(formattedWebView.getBytes("UTF-8"), Base64.DEFAULT);
         } catch (UnsupportedEncodingException e) {
             throw new RuntimeException("Missing UTF-8 support?!", e);
         }
         // Use loadURL to allow specifying a charset
-        getWebView().loadUrl("data:text/html;charset=utf-8;base64," + html);
+        getWebView().loadUrl("data:text/html;charset=utf-8;base64," + formattedWebView);
 
 
         getEmptyContainer().setVisibility(View.GONE);

@@ -105,4 +105,7 @@
     <string name="themeSummary">User-interface color theme.</string>
     <string name="chosenNotWritable">Chosen directory not writable, try one of</string>
 
+
+    <string name="fontRegular" translatable="false">fonts/Poppins-Regular.ttf</string>
+
 </resources>

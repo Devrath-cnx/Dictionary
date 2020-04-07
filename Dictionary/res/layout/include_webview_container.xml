@@ -1,7 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="10dp"
+    android:background="@android:color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginLeft="5dp"
+        android:layout_marginBottom="10dp">
+
+        <com.cnx.dictionarytool.application.utils.CustTxtVwPoppinsRegular
+            android:id="@+id/searchedNameId"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:inputType="textCapSentences"
+            android:textColor="@android:color/black"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_weight="1"
+            android:layout_marginLeft="15dp">
+
+        <ImageView
+            android:id="@+id/speakerIconId"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:src="@drawable/ic_icon_speaker"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
 
     <WebView
         android:id="@+id/webView"

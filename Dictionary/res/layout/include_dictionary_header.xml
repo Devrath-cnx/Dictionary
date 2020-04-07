@@ -31,7 +31,8 @@
             android:textColor="@android:color/white"
             android:singleLine="true"
             android:imeOptions="actionSearch"
-            android:textCursorDrawable="@android:color/white"
+            android:textCursorDrawable="@null"
+            android:inputType="textCapWords"
             android:background="@android:color/transparent"
             android:layout_marginLeft="16dp"/>
 
