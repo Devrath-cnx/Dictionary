@@ -39,152 +39,152 @@ public enum IsoUtils {
     private final Map<String, LanguageResources> isoCodeToResources = new HashMap<>();
     IsoUtils() {
         isoCodeToResources.put("AF", new LanguageResources("Afrikaans", R.string.AF,
-                               R.drawable.flag_of_south_africa));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("SQ", new LanguageResources("Albanian", R.string.SQ,
-                               R.drawable.flag_of_albania));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("AR",
-                               new LanguageResources("Arabic", R.string.AR, R.drawable.arabic));
+                               new LanguageResources("Arabic", R.string.AR, R.drawable.ic_icon_search));
         isoCodeToResources.put("HY", new LanguageResources("Armenian", R.string.HY,
-                               R.drawable.flag_of_armenia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("BE", new LanguageResources("Belarusian", R.string.BE,
-                               R.drawable.flag_of_belarus));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("BN", new LanguageResources("Bengali", R.string.BN));
         isoCodeToResources.put("BS", new LanguageResources("Bosnian", R.string.BS,
-                               R.drawable.flag_of_bosnia_and_herzegovina));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("BG", new LanguageResources("Bulgarian", R.string.BG,
-                               R.drawable.flag_of_bulgaria));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("MY", new LanguageResources("Burmese", R.string.MY,
-                               R.drawable.flag_of_myanmar));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("ZH", new LanguageResources("Chinese", R.string.ZH,
-                               R.drawable.flag_of_the_peoples_republic_of_china));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("cmn", new LanguageResources("Mandarin", R.string.cmn,
-                               R.drawable.flag_of_the_peoples_republic_of_china));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("yue", new LanguageResources("Cantonese", R.string.yue,
-                               R.drawable.flag_of_hong_kong));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("CA", new LanguageResources("Catalan", R.string.CA));
         isoCodeToResources.put("HR", new LanguageResources("Croatian", R.string.HR,
-                               R.drawable.flag_of_croatia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("CS", new LanguageResources("Czech", R.string.CS,
-                               R.drawable.flag_of_the_czech_republic));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("DA", new LanguageResources("Danish", R.string.DA,
-                               R.drawable.flag_of_denmark));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("NL", new LanguageResources("Dutch", R.string.NL,
-                               R.drawable.flag_of_the_netherlands));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("EN", new LanguageResources("English", R.string.EN,
-                               R.drawable.flag_of_the_united_kingdom));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("EO", new LanguageResources("Esperanto", R.string.EO,
-                               R.drawable.flag_of_esperanto));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("ET", new LanguageResources("Estonian", R.string.ET,
-                               R.drawable.flag_of_estonia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("FI", new LanguageResources("Finnish", R.string.FI,
-                               R.drawable.flag_of_finland));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("FR", new LanguageResources("French", R.string.FR,
-                               R.drawable.flag_of_france));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("DE", new LanguageResources("German", R.string.DE,
-                               R.drawable.flag_of_germany));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("EL", new LanguageResources("Greek", R.string.EL,
-                               R.drawable.flag_of_greece));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("grc", new LanguageResources("Ancient Greek", R.string.grc));
         isoCodeToResources.put("haw", new LanguageResources("Hawaiian", R.string.haw,
-                               R.drawable.flag_of_hawaii));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("HE", new LanguageResources("Hebrew", R.string.HE,
-                               R.drawable.flag_of_israel));
-        isoCodeToResources.put("HI", new LanguageResources("Hindi", R.string.HI, R.drawable.hindi));
+                               R.drawable.ic_icon_search));
+        isoCodeToResources.put("HI", new LanguageResources("Hindi", R.string.HI, R.drawable.ic_icon_search));
         isoCodeToResources.put("HU", new LanguageResources("Hungarian", R.string.HU,
-                               R.drawable.flag_of_hungary));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("IS", new LanguageResources("Icelandic", R.string.IS,
-                               R.drawable.flag_of_iceland));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("ID", new LanguageResources("Indonesian", R.string.ID,
-                               R.drawable.flag_of_indonesia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("GA", new LanguageResources("Irish", R.string.GA,
-                               R.drawable.flag_of_ireland));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("GD", new LanguageResources("Scottish Gaelic", R.string.GD,
-                               R.drawable.flag_of_scotland));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("GV", new LanguageResources("Manx", R.string.GV,
-                               R.drawable.flag_of_the_isle_of_man));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("IT", new LanguageResources("Italian", R.string.IT,
-                               R.drawable.flag_of_italy));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("LA", new LanguageResources("Latin", R.string.LA));
         isoCodeToResources.put("LV", new LanguageResources("Latvian", R.string.LV,
-                               R.drawable.flag_of_latvia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("LT", new LanguageResources("Lithuanian", R.string.LT,
-                               R.drawable.flag_of_lithuania));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("JA", new LanguageResources("Japanese", R.string.JA,
-                               R.drawable.flag_of_japan));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("KO", new LanguageResources("Korean", R.string.KO,
-                               R.drawable.flag_of_south_korea));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("KU", new LanguageResources("Kurdish", R.string.KU));
         isoCodeToResources.put("MS", new LanguageResources("Malay", R.string.MS,
-                               R.drawable.flag_of_malaysia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("MI", new LanguageResources("Maori", R.string.MI,
-                               R.drawable.flag_of_new_zealand));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("MN", new LanguageResources("Mongolian", R.string.MN,
-                               R.drawable.flag_of_mongolia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("NE", new LanguageResources("Nepali", R.string.NE,
-                               R.drawable.flag_of_nepal));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("NO", new LanguageResources("Norwegian", R.string.NO,
-                               R.drawable.flag_of_norway));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("FA", new LanguageResources("Persian", R.string.FA,
-                               R.drawable.flag_of_iran));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("PL", new LanguageResources("Polish", R.string.PL,
-                               R.drawable.flag_of_poland));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("PT", new LanguageResources("Portuguese", R.string.PT,
-                               R.drawable.flag_of_portugal));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("PA", new LanguageResources("Punjabi", R.string.PA));
         isoCodeToResources.put("RO", new LanguageResources("Romanian", R.string.RO,
-                               R.drawable.flag_of_romania));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("RU", new LanguageResources("Russian", R.string.RU,
-                               R.drawable.flag_of_russia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("SA", new LanguageResources("Sanskrit", R.string.SA));
         isoCodeToResources.put("SR", new LanguageResources("Serbian", R.string.SR,
-                               R.drawable.flag_of_serbia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("SK", new LanguageResources("Slovak", R.string.SK,
-                               R.drawable.flag_of_slovakia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("SL", new LanguageResources("Slovenian", R.string.SL,
-                               R.drawable.flag_of_slovenia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("SO", new LanguageResources("Somali", R.string.SO,
-                               R.drawable.flag_of_somalia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("ES", new LanguageResources("Spanish", R.string.ES,
-                               R.drawable.flag_of_spain));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("SW", new LanguageResources("Swahili", R.string.SW));
         isoCodeToResources.put("SV", new LanguageResources("Swedish", R.string.SV,
-                               R.drawable.flag_of_sweden));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("TL", new LanguageResources("Tagalog", R.string.TL));
         isoCodeToResources.put("TG", new LanguageResources("Tajik", R.string.TG,
-                               R.drawable.flag_of_tajikistan));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("TH", new LanguageResources("Thai", R.string.TH,
-                               R.drawable.flag_of_thailand));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("BO", new LanguageResources("Tibetan", R.string.BO));
         isoCodeToResources.put("TR", new LanguageResources("Turkish", R.string.TR,
-                               R.drawable.flag_of_turkey));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("UK", new LanguageResources("Ukrainian", R.string.UK,
-                               R.drawable.flag_of_ukraine));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("UR", new LanguageResources("Urdu", R.string.UR));
         isoCodeToResources.put("VI", new LanguageResources("Vietnamese", R.string.VI,
-                               R.drawable.flag_of_vietnam));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("CI", new LanguageResources("Welsh", R.string.CI,
-                               R.drawable.flag_of_wales_2));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("YI", new LanguageResources("Yiddish", R.string.YI));
         isoCodeToResources.put("ZU", new LanguageResources("Zulu", R.string.ZU));
         isoCodeToResources.put("AZ", new LanguageResources("Azeri", R.string.AZ,
-                               R.drawable.flag_of_azerbaijan));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("EU", new LanguageResources("Basque", R.string.EU,
-                               R.drawable.flag_of_the_basque_country));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("BR", new LanguageResources("Breton", R.string.BR));
         isoCodeToResources.put("MR", new LanguageResources("Marathi", R.string.MR));
         isoCodeToResources.put("FO", new LanguageResources("Faroese", R.string.FO));
         isoCodeToResources.put("GL", new LanguageResources("Galician", R.string.GL,
-                               R.drawable.flag_of_galicia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("KA", new LanguageResources("Georgian", R.string.KA,
-                               R.drawable.flag_of_georgia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("HT", new LanguageResources("Haitian Creole", R.string.HT,
-                               R.drawable.flag_of_haiti));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("LB", new LanguageResources("Luxembourgish", R.string.LB,
-                               R.drawable.flag_of_luxembourg));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("MK", new LanguageResources("Macedonian", R.string.MK,
-                               R.drawable.flag_of_macedonia));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("LO", new LanguageResources("Lao", R.string.LO,
-                               R.drawable.flag_of_laos));
+                               R.drawable.ic_icon_search));
         isoCodeToResources.put("ML", new LanguageResources("Malayalam", R.string.ML));
         isoCodeToResources.put("TA", new LanguageResources("Tamil", R.string.TA));
         isoCodeToResources.put("SH", new LanguageResources("Serbo-Croatian", R.string.SH));
