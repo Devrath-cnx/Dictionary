@@ -100,6 +100,10 @@ import timber.log.Timber;
 
 import static com.cnx.dictionarytool.utils.Constants.DICTIONARY_WORKER_TAG;
 import static com.cnx.dictionarytool.utils.Constants.LOCAL_BROADCAST_DICTIONARY;
+import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_EMPTY_SEARCH;
+import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_SEARCH_TEXT_NOT_PRESENT;
+import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_SEARCH_TEXT_PRESENT;
+import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_SYNCHING;
 
 
 public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
@@ -131,8 +135,45 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
     private ImageView speakerIconId;
     private ImageView imgSearchIconId;
     private ImageView imgSearchCncllId;
+    private LinearLayout searchMainContainerId;
+    private TextView emptyNotificationId;
 
     private TextToSpeech textToSpeech;
+
+    enum ScreenState {
+        STATE_SYNCHING,
+        STATE_SYNCHED,
+        STATE_EMPTY_SEARCH,
+        STATE_SEARCH_TEXT_PRESENT,
+        STATE_SEARCH_TEXT_NOT_PRESENT
+    }
+
+    public void ScreenDisplayState( ScreenState which) {
+        // do your own bounds checking
+
+        switch (which) {
+            case STATE_SYNCHING:
+                synchingState();
+                break;
+
+            case STATE_SYNCHED:
+                synchedState();
+                break;
+
+            case STATE_EMPTY_SEARCH:
+                emptySearchView();
+                break;
+
+            case STATE_SEARCH_TEXT_PRESENT:
+                searchTextPresent();;
+                break;
+
+            case STATE_SEARCH_TEXT_NOT_PRESENT:
+                searchTextNotPresent();;
+                break;
+
+        }
+    }
 
     String displayText = "";
     private static final Pattern CHAR_DASH = Pattern.compile("['\\p{L}\\p{M}\\p{N}]+");
@@ -153,6 +194,9 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
     private ImageView getSearchIcon() { if (imgSearchIconId == null) { imgSearchIconId = findViewById(R.id.imgSearchIconId); } return imgSearchIconId; }
     private ImageView getSearchCloseIcon() { if (imgSearchCncllId == null) { imgSearchCncllId = findViewById(R.id.imgSearchCncllId); } return imgSearchCncllId; }
 
+    private LinearLayout getSearchMainContainerId() { if (searchMainContainerId == null) { searchMainContainerId = findViewById(R.id.searchMainContainerId); } return searchMainContainerId; }
+    private TextView getEmptyTextView() { if (emptyNotificationId == null) { emptyNotificationId = findViewById(R.id.emptyNotificationId); } return emptyNotificationId; }
+
     private ImageView getSpeakerImageId() { if (speakerIconId == null) { speakerIconId = findViewById(R.id.speakerIconId); } return speakerIconId; }
     private TextView getSearchedTextView() { if (searchedNameId == null) { searchedNameId = findViewById(R.id.searchedNameId); } return searchedNameId; }
     private WebView getWebView() { if (webView == null) { webView = findViewById(R.id.webView); } return webView; }
@@ -162,19 +206,6 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
     private View getListContainer() {  if (listContainerId == null) { listContainerId = findViewById(R.id.listContainerId);} return listContainerId; }
     private View getEmptyContainer() { if (listNoDataContainerId == null) { listNoDataContainerId = findViewById(R.id.listNoDataContainerId); } return listNoDataContainerId; }
     private View getWebViewContainer() {  if (listWebViewContainerId == null) { listWebViewContainerId = findViewById(R.id.listWebViewContainerId);} return listWebViewContainerId; }
-
-
-    private RandomUsersApi getNetworkService(Context context) {
-        if(networkComponent==null){
-            networkComponent = DaggerNetworkComponent.builder()
-                    .contextModule(new ContextModule(context))
-                    .networkModule(new NetworkModule())
-                    .okHttpClientModule(new OkHttpClientModule())
-                    .build();
-
-        }
-        return networkComponent.getService();
-    }
 
     /******************************* Constructors **************************************************/
     public DictionaryScreen(@NonNull Context context) {
@@ -228,8 +259,9 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         setDictionaryFile(context);
         initListView();
         setInitialListState();
-        emptySearchView();
+        ScreenDisplayState(STATE_EMPTY_SEARCH);
         initilizeWorkerService(context);
+
     }
 
     /** INITIALIZE  List View **/
@@ -289,7 +321,11 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         getSearchedTextView();
         getSearchIcon();
         getSearchCloseIcon();
+        getSearchMainContainerId();
+        getEmptyTextView();
     }
+
+
 
     /** LISTENERS: Set all the listeners for the dictionary **/
     private void setListener() {
@@ -325,7 +361,7 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
             @Override
             public void onClick(View v) {
                 hidekeyBoard(context,v);
-                emptySearchView();
+                ScreenDisplayState(STATE_EMPTY_SEARCH);
             }
         });
 
@@ -364,29 +400,18 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
     private void onSearchTextChange(final String text) {
 
         if(text.length()>3||text.length()==3){
-            getSearchIcon().setVisibility(View.GONE);
-            getSearchCloseIcon().setVisibility(View.VISIBLE);
-            //Set the container states
-            getEmptyContainer().setVisibility(View.GONE);
-            getListContainer().setVisibility(View.VISIBLE);
+            ScreenDisplayState(STATE_SEARCH_TEXT_PRESENT);
             //Perform search
             currentSearchOperation = new SearchOperation(text, index);
             searchExecutor.execute(currentSearchOperation);
         }else{
-            getSearchIcon().setVisibility(View.VISIBLE);
-            getSearchCloseIcon().setVisibility(View.GONE);
-            //Set the container states
-            getEmptyContainer().setVisibility(View.VISIBLE);
-            getListContainer().setVisibility(View.GONE);
+            ScreenDisplayState(STATE_SEARCH_TEXT_NOT_PRESENT);
         }
 
     }
 
-    private void emptySearchView() {
-        getSearchIcon().setVisibility(VISIBLE);
-        getSearchCloseIcon().setVisibility(GONE);
-        getSearchView().setText("");
-    }
+
+
 
     public static void hidekeyBoard(Context context, View view) {
         InputMethodManager imm = (InputMethodManager) context.getSystemService(Activity.INPUT_METHOD_SERVICE);
@@ -822,6 +847,49 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         }
     }
     /** ******************************************** CLASS IMPLEMENTATIONS ******************************************** **/
+
+
+    /** ******************************************** SCREEN  STATES ******************************************** **/
+    private void synchingState() {
+        getSearchMainContainerId().setVisibility(View.GONE);
+        getListContainer().setVisibility(View.GONE);
+        getEmptyContainer().setVisibility(View.VISIBLE);
+        getWebViewContainer().setVisibility(View.GONE);
+        getEmptyTextView().setText(context.getResources().getText(R.string.str_search_dict_getting_downloaded));
+        getRootId().requestLayout();
+    }
+
+    private void synchedState() {
+        getSearchMainContainerId().setVisibility(View.VISIBLE);
+        getListContainer().setVisibility(View.VISIBLE);
+        getEmptyContainer().setVisibility(View.GONE);
+        getWebViewContainer().setVisibility(View.GONE);
+        getEmptyTextView().setText(context.getResources().getText(R.string.str_search_something));
+        getRootId().requestLayout();
+    }
+
+    private void emptySearchView() {
+        getSearchIcon().setVisibility(VISIBLE);
+        getSearchCloseIcon().setVisibility(GONE);
+        getSearchView().setText("");
+    }
+
+    private void searchTextNotPresent() {
+        getSearchIcon().setVisibility(View.VISIBLE);
+        getSearchCloseIcon().setVisibility(View.GONE);
+        //Set the container states
+        getEmptyContainer().setVisibility(View.VISIBLE);
+        getListContainer().setVisibility(View.GONE);
+    }
+
+    private void searchTextPresent() {
+        getSearchIcon().setVisibility(View.GONE);
+        getSearchCloseIcon().setVisibility(View.VISIBLE);
+        //Set the container states
+        getEmptyContainer().setVisibility(View.GONE);
+        getListContainer().setVisibility(View.VISIBLE);
+    }
+    /** ******************************************** SCREEN  STATES ******************************************** **/
 
 
     private boolean isWorkScheduled(String tag) {
