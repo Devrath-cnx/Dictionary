@@ -10,8 +10,7 @@ import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-import static com.cnx.dictionarytool.application.utils.Constants.CYBERNETYX_URL;
-import static com.cnx.dictionarytool.application.utils.Constants.DICTIONARY_FILE_URL;
+import static com.cnx.dictionarytool.utils.Constants.CYBERNETYX_URL;
 
 @Module(includes = OkHttpClientModule.class)
 public class NetworkModule {

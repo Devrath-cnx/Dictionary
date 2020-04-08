@@ -3,11 +3,15 @@ package com.cnx.dictionarytool.workers;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.lifecycle.LifecycleObserver;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.work.Data;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
@@ -32,7 +36,9 @@ import retrofit2.Callback;
 import retrofit2.Response;
 import timber.log.Timber;
 
-public class DictionaryWorker extends Worker {
+import static com.cnx.dictionarytool.utils.Constants.LOCAL_BROADCAST_DICTIONARY;
+
+public class DictionaryWorker extends Worker implements LifecycleObserver {
 
     private final String CURRENT_SCREEN =  DictionaryWorker.this.getClass().getSimpleName();
     private static final String WORK_RESULT = "work_result";
@@ -58,11 +64,17 @@ public class DictionaryWorker extends Worker {
         initNotificationChannel();
         /** Connect to cnx server , download the file and write the file to storage **/
         initCnxNetworkConnection(context);
+        sendMessage();
         Data outputData = new Data.Builder().putString(WORK_RESULT, "Jobs Finished").build();
         return Result.success(outputData);
     }
 
-
+    private void sendMessage() {
+        Intent intent = new Intent(LOCAL_BROADCAST_DICTIONARY);
+        // You can also include some extra data.
+        //intent.putExtra("message", "This is my message!");
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+    }
 
 
     private RandomUsersApi getNetworkService(Context context) {

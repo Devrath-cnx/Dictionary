@@ -1,6 +1,9 @@
-package com.cnx.dictionarytool.application.views.screen;
+package com.cnx.dictionarytool.views;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -33,14 +36,24 @@ import android.widget.ListView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleObserver;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.OnLifecycleEvent;
+import androidx.lifecycle.ProcessLifecycleOwner;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.work.Constraints;
+import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 
 import com.cnx.dictionarytool.R;
-import com.cnx.dictionarytool.application.utils.CopyAssets;
+import com.cnx.dictionarytool.utils.CopyAssets;
 import com.cnx.dictionarytool.di.components.DaggerNetworkComponent;
 import com.cnx.dictionarytool.di.components.NetworkComponent;
 import com.cnx.dictionarytool.di.modulles.ContextModule;
@@ -58,14 +71,11 @@ import com.cnx.dictionarytool.library.engine.RowBase;
 import com.cnx.dictionarytool.library.engine.TokenRow;
 import com.cnx.dictionarytool.library.engine.TransliteratorManager;
 import com.cnx.dictionarytool.workers.DictionaryWorker;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
 import java.nio.channels.FileChannel;
@@ -75,6 +85,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -82,16 +94,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import okhttp3.ResponseBody;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 import timber.log.Timber;
 
-import static com.cnx.dictionarytool.application.utils.Constants.DICTIONARY_FILE_URL;
+import static com.cnx.dictionarytool.utils.Constants.DICTIONARY_WORKER_TAG;
+import static com.cnx.dictionarytool.utils.Constants.LOCAL_BROADCAST_DICTIONARY;
 
 
-public class DictionaryScreen extends FrameLayout {
+public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
 
     private String CURRENT_SCREEN =  DictionaryScreen.this.getClass().getSimpleName();
     private NetworkComponent networkComponent;
@@ -177,6 +186,26 @@ public class DictionaryScreen extends FrameLayout {
     }
     /******************************* Constructors **************************************************/
 
+    /******************************* Life Cycle Aware Events ***************************************/
+    @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    public void appInResumeState() {
+        LocalBroadcastManager.getInstance(context).registerReceiver(mDictionaryDataReciever,new IntentFilter(LOCAL_BROADCAST_DICTIONARY));
+    }
+
+    @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+    public void appInPauseState() {
+        LocalBroadcastManager.getInstance(context).unregisterReceiver(mDictionaryDataReciever);
+    }
+    /******************************* Life Cycle Aware Events ***************************************/
+
+    private BroadcastReceiver mDictionaryDataReciever = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Get extra data included in the Intent
+            //String message = intent.getStringExtra("message");
+            //Log.d("receiver", "Got message: ");
+        }
+    };
 
     /******************************* Init functions  ***********************************************/
     /** INITIALIZE  Entire Screen **/
@@ -186,16 +215,13 @@ public class DictionaryScreen extends FrameLayout {
         application = DictionaryApplication.INSTANCE;
         context.setTheme(application.getSelectedTheme().themeId);
         inflate(context, R.layout.screen_dictionary, this);
+        ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
         findViewsInScreen();
         setListener();
         setDictionaryFile(context);
         initListView();
         setInitialListState();
-
-        final WorkManager mWorkManager = WorkManager.getInstance();
-        final OneTimeWorkRequest mRequest = new OneTimeWorkRequest.Builder(DictionaryWorker.class).build();
-        mWorkManager.enqueue(mRequest);
-
+        initilizeWorkerService(context);
     }
 
     /** INITIALIZE  List View **/
@@ -305,7 +331,7 @@ public class DictionaryScreen extends FrameLayout {
             }
             dictionary = new Dictionary(dictRaf);
         } catch (Exception e) {
-            Log.e("ERROR",""+e.getMessage());
+            Timber.e(CURRENT_SCREEN, "ERROR: %s", e.getMessage());
         }
         indexIndex = 0;
         for (int i = 0; i < dictionary.indices.size(); ++i) {
@@ -332,6 +358,23 @@ public class DictionaryScreen extends FrameLayout {
             getListContainer().setVisibility(View.GONE);
         }
 
+    }
+
+    /** Initilize worker service **/
+    private void initilizeWorkerService(Context context) {
+        if(!isWorkScheduled(DICTIONARY_WORKER_TAG)) { // check if your work is not already scheduled
+            // schedule your work
+            final WorkManager mWorkManager = WorkManager.getInstance(context);
+            final OneTimeWorkRequest mRequest = new OneTimeWorkRequest.Builder(DictionaryWorker.class)
+                    .setConstraints(new Constraints.Builder()
+                            .setRequiredNetworkType(NetworkType.CONNECTED)
+                            .setRequiresBatteryNotLow(true)
+                            .setRequiresStorageNotLow(true)
+                            .build())
+                    .addTag(DICTIONARY_WORKER_TAG)
+                    .build();
+            mWorkManager.enqueue(mRequest);
+        }
     }
 
     /** RESET FILTERED LIST : Change the result of list base on data changed in edit view  **/
@@ -737,7 +780,7 @@ public class DictionaryScreen extends FrameLayout {
                     Timber.d(CURRENT_SCREEN, "interrupted, skipping searchFinished.");
                 }
             } catch (Exception e) {
-                Log.e(CURRENT_SCREEN, "Failure during search (can happen during Activity close): " + e.getMessage());
+                Timber.e(CURRENT_SCREEN, "Failure during search (can happen during Activity close): %s", e.getMessage());
             } finally {
                 synchronized (this) {
                     this.notifyAll();
@@ -746,5 +789,26 @@ public class DictionaryScreen extends FrameLayout {
         }
     }
     /** ******************************************** CLASS IMPLEMENTATIONS ******************************************** **/
+
+
+    private boolean isWorkScheduled(String tag) {
+        WorkManager instance = WorkManager.getInstance();
+        ListenableFuture<List<WorkInfo>> statuses = instance.getWorkInfosByTag(tag);
+        try {
+            boolean running = false;
+            List<WorkInfo> workInfoList = statuses.get();
+            for (WorkInfo workInfo : workInfoList) {
+                WorkInfo.State state = workInfo.getState();
+                running = state == WorkInfo.State.RUNNING | state == WorkInfo.State.ENQUEUED;
+            }
+            return running;
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
 }
