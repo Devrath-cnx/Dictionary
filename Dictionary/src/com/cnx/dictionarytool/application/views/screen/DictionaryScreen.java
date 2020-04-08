@@ -36,6 +36,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
 import com.cnx.dictionarytool.R;
 import com.cnx.dictionarytool.application.utils.CopyAssets;
@@ -55,10 +57,15 @@ import com.cnx.dictionarytool.library.engine.PairEntry;
 import com.cnx.dictionarytool.library.engine.RowBase;
 import com.cnx.dictionarytool.library.engine.TokenRow;
 import com.cnx.dictionarytool.library.engine.TransliteratorManager;
+import com.cnx.dictionarytool.workers.DictionaryWorker;
 
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
 import java.nio.channels.FileChannel;
@@ -184,38 +191,12 @@ public class DictionaryScreen extends FrameLayout {
         setDictionaryFile(context);
         initListView();
         setInitialListState();
-        
-        initCnxNetworkConnection(context);
+
+        final WorkManager mWorkManager = WorkManager.getInstance();
+        final OneTimeWorkRequest mRequest = new OneTimeWorkRequest.Builder(DictionaryWorker.class).build();
+        mWorkManager.enqueue(mRequest);
 
     }
-
-    private void initCnxNetworkConnection(Context context) {
-
-
-        Call<ResponseBody> call = getNetworkService(context).downloadDictionary();
-
-        call.enqueue(new Callback<ResponseBody>() {
-            @Override
-            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                if (response.isSuccessful()) {
-                    Timber.d(CURRENT_SCREEN, "server contacted and has file");
-
-                    //boolean writtenToDisk = writeResponseBodyToDisk(response.body());
-
-                    //Timber.d(CURRENT_SCREEN, "file download was a success? " + writtenToDisk);
-                } else {
-                    Timber.d(CURRENT_SCREEN, "server contact failed");
-                }
-            }
-
-            @Override
-            public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Log.e(CURRENT_SCREEN, "error");
-            }
-        });
-        
-    }
-
 
     /** INITIALIZE  List View **/
     private void initListView() {
@@ -765,4 +746,5 @@ public class DictionaryScreen extends FrameLayout {
         }
     }
     /** ******************************************** CLASS IMPLEMENTATIONS ******************************************** **/
+
 }
