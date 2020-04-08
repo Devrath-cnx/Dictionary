@@ -1,13 +1,18 @@
 package com.cnx.dictionarytool.workers;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
-import android.util.Log;
+import android.os.Build;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.work.Data;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import com.cnx.dictionarytool.R;
 import com.cnx.dictionarytool.di.components.DaggerNetworkComponent;
 import com.cnx.dictionarytool.di.components.NetworkComponent;
 import com.cnx.dictionarytool.di.modulles.ContextModule;
@@ -31,9 +36,15 @@ public class DictionaryWorker extends Worker {
 
     private final String CURRENT_SCREEN =  DictionaryWorker.this.getClass().getSimpleName();
     private static final String WORK_RESULT = "work_result";
+    private static final String CHANNEL_ID = "128";
+
 
     private Context context;
     private NetworkComponent networkComponent;
+    private NotificationCompat.Builder mBuilder;
+    private  NotificationManagerCompat notificationManager;
+
+
 
     public DictionaryWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
@@ -43,12 +54,14 @@ public class DictionaryWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-
+        /** Initilize the notification channel **/
+        initNotificationChannel();
+        /** Connect to cnx server , download the file and write the file to storage **/
         initCnxNetworkConnection(context);
-
         Data outputData = new Data.Builder().putString(WORK_RESULT, "Jobs Finished").build();
         return Result.success(outputData);
     }
+
 
 
 
@@ -66,7 +79,8 @@ public class DictionaryWorker extends Worker {
 
 
     /********************************************************** RETROFIT *************************************************/
-    private void initCnxNetworkConnection(Context context) {
+    private void initCnxNetworkConnection(final Context context) {
+        notifyDictionaryProgress(context.getResources().getString(R.string.str_kneura), "Connecting to kneura server");
         Call<ResponseBody> call = getNetworkService(context).downloadDictionary();
         call.enqueue(new Callback<ResponseBody>() {
             @Override
@@ -82,12 +96,14 @@ public class DictionaryWorker extends Worker {
 
                     //Timber.d(CURRENT_SCREEN, "file download was a success? " + writtenToDisk);
                 } else {
+                    incompleteDownload();
                     Timber.d(CURRENT_SCREEN, "server contact failed");
                 }
             }
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
+                incompleteDownload();
                 Timber.e(CURRENT_SCREEN, "error");
             }
         });
@@ -97,6 +113,8 @@ public class DictionaryWorker extends Worker {
 
     /********************************************************** WRITE TO STORAGE *****************************************/
     private boolean writeResponseBodyToDisk(ResponseBody body) {
+        notifyDictionaryProgress(context.getResources().getString(R.string.str_kneura),
+                                 context.getResources().getString(R.string.str_kneura_dict_sync_write_to_device));
         try {
             // todo change the file location/name according to your needs
             File futureStudioIconFile = new File(context.getExternalFilesDir(null) + File.separator + "test.png");
@@ -124,13 +142,15 @@ public class DictionaryWorker extends Worker {
 
                     fileSizeDownloaded += read;
 
-                    Timber.d(CURRENT_SCREEN, "file download: " + fileSizeDownloaded + " of " + fileSize);
                 }
-
+                notificationComplete(context.getResources().getString(R.string.str_kneura),
+                                     context.getResources().getString(R.string.str_kneura_dict_sync_complete));
                 outputStream.flush();
 
                 return true;
             } catch (IOException e) {
+                incompleteDownload();
+                Timber.e(CURRENT_SCREEN, e.getMessage());
                 return false;
             } finally {
                 if (inputStream != null) {
@@ -142,10 +162,58 @@ public class DictionaryWorker extends Worker {
                 }
             }
         } catch (IOException e) {
+            incompleteDownload();
+            Timber.e(CURRENT_SCREEN, e.getMessage());
             return false;
         }
     }
     /********************************************************** WRITE TO STORAGE *****************************************/
+
+    /********************************************************** Notifications ********************************************/
+    /** Initialize the notification channel  **/
+    private void initNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = context.getString(R.string.str_kneura);
+            String description = context.getString(R.string.str_kneura_dict_sync);
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+
+            NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    /** Display state - Updating intermediate message states **/
+    private void notifyDictionaryProgress(String title, String message) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            mBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_icon_search)
+                    .setContentTitle(title)
+                    .setContentText(message)
+                    .setProgress(0, 0, true)
+                    .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+
+            notificationManager = NotificationManagerCompat.from(context);
+
+            // notificationId is a unique int for each notification that you must define
+            notificationManager.notify(0, mBuilder.build());
+        }
+    }
+
+    /** Display state - when dictionary have finished downloading **/
+    private void notificationComplete(String title, String message) {
+        notifyDictionaryProgress(title, message);
+        mBuilder.setProgress(0, 0, false);
+        notificationManager.notify(0, mBuilder.build());
+    }
+
+    /** Incomplete download state **/
+    private void incompleteDownload() {
+        notificationComplete(context.getResources().getString(R.string.str_kneura),
+                context.getResources().getString(R.string.str_kneura_dict_sync_in_complete));
+    }
+    /********************************************************** Notifications ********************************************/
 
 
 }
