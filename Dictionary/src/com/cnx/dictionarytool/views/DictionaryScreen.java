@@ -55,6 +55,8 @@ import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 
 import com.cnx.dictionarytool.R;
+import com.cnx.dictionarytool.di.components.DaggerSharedPreferencesComponent;
+import com.cnx.dictionarytool.di.components.SharedPreferencesComponent;
 import com.cnx.dictionarytool.utils.CopyAssets;
 import com.cnx.dictionarytool.di.components.DaggerNetworkComponent;
 import com.cnx.dictionarytool.di.components.NetworkComponent;
@@ -72,6 +74,7 @@ import com.cnx.dictionarytool.library.engine.PairEntry;
 import com.cnx.dictionarytool.library.engine.RowBase;
 import com.cnx.dictionarytool.library.engine.TokenRow;
 import com.cnx.dictionarytool.library.engine.TransliteratorManager;
+import com.cnx.dictionarytool.utils.UtilPath;
 import com.cnx.dictionarytool.workers.DictionaryWorker;
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -99,7 +102,9 @@ import java.util.regex.Pattern;
 import timber.log.Timber;
 
 import static com.cnx.dictionarytool.utils.Constants.DICTIONARY_WORKER_TAG;
+import static com.cnx.dictionarytool.utils.Constants.INTENT_DOWNLOAD_DICTIONARY_PARAM;
 import static com.cnx.dictionarytool.utils.Constants.LOCAL_BROADCAST_DICTIONARY;
+import static com.cnx.dictionarytool.utils.Constants.SHARED_PREFERENCES_FILE_NAME_FLAG;
 import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_EMPTY_SEARCH;
 import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_SEARCH_TEXT_NOT_PRESENT;
 import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_SEARCH_TEXT_PRESENT;
@@ -139,6 +144,8 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
     private TextView emptyNotificationId;
 
     private TextToSpeech textToSpeech;
+
+    private SharedPreferencesComponent sharedPreferencesComponent;
 
     enum ScreenState {
         STATE_SYNCHING,
@@ -240,8 +247,20 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         @Override
         public void onReceive(Context context, Intent intent) {
             // Get extra data included in the Intent
-            //String message = intent.getStringExtra("message");
+            boolean value = intent.getBooleanExtra(INTENT_DOWNLOAD_DICTIONARY_PARAM,false);
             //Log.d("receiver", "Got message: ");
+            if(value){
+                if(new UtilPath(context).isDictionaryExists()){
+                    //Set the flag that file is downloaded
+                    getSharedPreference(context).edit().putBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG,true).apply();
+                    //Dictionary is ready
+                    dictionaryIsReady();
+                }else{
+                    Toast.makeText(context,context.getResources().getString(R.string.str_download_failed_relaunch),Toast.LENGTH_LONG).show();
+                }
+            }else{
+                Toast.makeText(context,context.getResources().getString(R.string.str_download_failed_relaunch),Toast.LENGTH_LONG).show();
+            }
         }
     };
 
@@ -256,12 +275,30 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
         findViewsInScreen();
         setListener();
-        setDictionaryFile(context);
-        initListView();
-        setInitialListState();
-        ScreenDisplayState(STATE_EMPTY_SEARCH);
-        initilizeWorkerService(context);
 
+        //Check in the shared preferences if the file is downloaded
+        if(getSharedPreference(context).getBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG, false))
+        {
+            //Dictionary file is already downloaded
+            dictionaryIsReady();
+        }else{
+            //Dictionary file is already downloaded, So download the dictionary file
+            initilizeWorkerService(context);
+            //Set the sync state
+            ScreenDisplayState(STATE_EMPTY_SEARCH);
+        }
+    }
+
+    /** Dictionary is ready **/
+    private void dictionaryIsReady() {
+        //Set the dictionary file
+        setDictionaryFileFromServer(context);
+        //Initialize the list view
+        initListView();
+        //Set the empty list state
+        setInitialListState();
+        //Set the search state
+        ScreenDisplayState(STATE_EMPTY_SEARCH);
     }
 
     /** INITIALIZE  List View **/
@@ -373,8 +410,7 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         });
     }
 
-    /** DICTIONARY: Get the  dictionary from the storage to current class **/
-    private void setDictionaryFile(Context context) {
+    private void setDictionaryFileFromServer(Context context) {
         dictionaryFile = new CopyAssets(context).getDictionaryFileUri();
         if (dictRaf == null){
             dictFile = new File(dictionaryFile);
@@ -396,6 +432,7 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         }
     }
 
+
     /** ON TEXT CHANGE : Handle the  visibility of containers based on visibility **/
     private void onSearchTextChange(final String text) {
 
@@ -410,7 +447,14 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
 
     }
 
-
+    private SharedPreferences getSharedPreference(Context context) {
+        if(sharedPreferencesComponent==null){
+            sharedPreferencesComponent = DaggerSharedPreferencesComponent.builder()
+                    .contextModule(new ContextModule(context))
+                    .build();
+        }
+        return sharedPreferencesComponent.prefManager();
+    }
 
 
     public static void hidekeyBoard(Context context, View view) {
@@ -912,4 +956,28 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         }
     }
 
+
+    /** DICTIONARY: Get the  dictionary from the storage to current class **/
+    /** Dont delete this commented function --- Use for testing with assets folder **/
+    /*private void setDictionaryFileFromAssets(Context context) {
+        dictionaryFile = new CopyAssets(context).getDictionaryFileUri();
+        if (dictRaf == null){
+            dictFile = new File(dictionaryFile);
+        }
+        try {
+            if (dictRaf == null) {
+                dictRaf = new RandomAccessFile(dictFile, "r").getChannel();
+            }
+            dictionary = new Dictionary(dictRaf);
+        } catch (Exception e) {
+            Timber.e(CURRENT_SCREEN, "ERROR: %s", e.getMessage());
+        }
+        indexIndex = 0;
+        for (int i = 0; i < dictionary.indices.size(); ++i) {
+            if (dictionary.indices.get(i).shortName.equals("EN")) {
+                indexIndex = i;
+                break;
+            }
+        }
+    }*/
 }

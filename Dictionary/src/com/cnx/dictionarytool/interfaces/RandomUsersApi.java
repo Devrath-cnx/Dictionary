@@ -6,6 +6,8 @@ import retrofit2.http.GET;
 import retrofit2.http.Streaming;
 import retrofit2.http.Url;
 
+import static com.cnx.dictionarytool.utils.Constants.CYBERNETYX_URL_API;
+
 public interface RandomUsersApi {
     @Streaming
     @GET("/download/test.png")

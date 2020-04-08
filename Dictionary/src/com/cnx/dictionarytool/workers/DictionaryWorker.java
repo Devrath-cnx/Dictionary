@@ -5,7 +5,6 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -36,6 +35,8 @@ import retrofit2.Callback;
 import retrofit2.Response;
 import timber.log.Timber;
 
+import static com.cnx.dictionarytool.utils.Constants.DICTIONARY_FILE;
+import static com.cnx.dictionarytool.utils.Constants.INTENT_DOWNLOAD_DICTIONARY_PARAM;
 import static com.cnx.dictionarytool.utils.Constants.LOCAL_BROADCAST_DICTIONARY;
 
 public class DictionaryWorker extends Worker implements LifecycleObserver {
@@ -49,6 +50,7 @@ public class DictionaryWorker extends Worker implements LifecycleObserver {
     private NetworkComponent networkComponent;
     private NotificationCompat.Builder mBuilder;
     private  NotificationManagerCompat notificationManager;
+    private boolean isDownloadSuccessful  = false;
 
 
 
@@ -60,19 +62,34 @@ public class DictionaryWorker extends Worker implements LifecycleObserver {
     @NonNull
     @Override
     public Result doWork() {
-        /** Initilize the notification channel **/
-        initNotificationChannel();
-        /** Connect to cnx server , download the file and write the file to storage **/
-        initCnxNetworkConnection(context);
-        sendMessage();
+        try{
+            /** Initilize the notification channel **/
+            initNotificationChannel();
+            /** Connect to cnx server , download the file and write the file to storage **/
+            initCnxNetworkConnection(context);
+
+            if(isDownloadSuccessful){
+                sendMessage(true);
+                Data outputData = new Data.Builder().putString(WORK_RESULT, "Jobs Finished").build();
+                return Result.success(outputData);
+            }else{
+                sendMessage(false);
+                Data outputData = new Data.Builder().putString(WORK_RESULT, "Jobs Finished").build();
+                return Result.failure(outputData);
+            }
+        }catch (Exception ex){
+            ex.printStackTrace();
+        }
+        sendMessage(false);
         Data outputData = new Data.Builder().putString(WORK_RESULT, "Jobs Finished").build();
-        return Result.success(outputData);
+        return Result.failure(outputData);
+
     }
 
-    private void sendMessage() {
+    private void sendMessage(boolean value) {
         Intent intent = new Intent(LOCAL_BROADCAST_DICTIONARY);
         // You can also include some extra data.
-        //intent.putExtra("message", "This is my message!");
+        intent.putExtra(INTENT_DOWNLOAD_DICTIONARY_PARAM, value);
         LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
     }
 
@@ -93,32 +110,39 @@ public class DictionaryWorker extends Worker implements LifecycleObserver {
     /********************************************************** RETROFIT *************************************************/
     private void initCnxNetworkConnection(final Context context) {
         notifyDictionaryProgress(context.getResources().getString(R.string.str_kneura), "Connecting to kneura server");
-        Call<ResponseBody> call = getNetworkService(context).downloadDictionary();
-        call.enqueue(new Callback<ResponseBody>() {
-            @Override
-            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                if (response.isSuccessful()) {
-                    Timber.d(CURRENT_SCREEN, "server contacted and has file");
-                    boolean writtenToDisk = false;
-                    if(response.body()!=null){
-                        writtenToDisk = writeResponseBodyToDisk(response.body());
+
+        try{
+            Call<ResponseBody> call = getNetworkService(context).downloadDictionary();
+            call.enqueue(new Callback<ResponseBody>() {
+                @Override
+                public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                    if (response.isSuccessful()) {
+                        Timber.d(CURRENT_SCREEN, "server contacted and has file");
+                        boolean writtenToDisk = false;
+                        if(response.body()!=null){
+                            writtenToDisk = writeResponseBodyToDisk(response.body());
+                        }
+
+                        Timber.d(CURRENT_SCREEN, "file download was a success? %s", writtenToDisk);
+
+                        //Timber.d(CURRENT_SCREEN, "file download was a success? " + writtenToDisk);
+                    } else {
+                        incompleteDownload();
+                        Timber.d(CURRENT_SCREEN, "server contact failed");
                     }
-
-                    Timber.d(CURRENT_SCREEN, "file download was a success? %s", writtenToDisk);
-
-                    //Timber.d(CURRENT_SCREEN, "file download was a success? " + writtenToDisk);
-                } else {
-                    incompleteDownload();
-                    Timber.d(CURRENT_SCREEN, "server contact failed");
                 }
-            }
 
-            @Override
-            public void onFailure(Call<ResponseBody> call, Throwable t) {
-                incompleteDownload();
-                Timber.e(CURRENT_SCREEN, "error");
-            }
-        });
+                @Override
+                public void onFailure(Call<ResponseBody> call, Throwable t) {
+                    incompleteDownload();
+                    Timber.e(CURRENT_SCREEN, "error");
+                }
+            });
+        }catch (Exception ex){
+            incompleteDownload();
+            Timber.e(CURRENT_SCREEN, "error%s", ex);
+        }
+
 
     }
     /********************************************************** RETROFIT *************************************************/
@@ -129,7 +153,7 @@ public class DictionaryWorker extends Worker implements LifecycleObserver {
                                  context.getResources().getString(R.string.str_kneura_dict_sync_write_to_device));
         try {
             // todo change the file location/name according to your needs
-            File futureStudioIconFile = new File(context.getExternalFilesDir(null) + File.separator + "test.png");
+            File futureStudioIconFile = new File(context.getExternalFilesDir(null) + File.separator + DICTIONARY_FILE);
 
             InputStream inputStream = null;
             OutputStream outputStream = null;
@@ -158,7 +182,7 @@ public class DictionaryWorker extends Worker implements LifecycleObserver {
                 notificationComplete(context.getResources().getString(R.string.str_kneura),
                                      context.getResources().getString(R.string.str_kneura_dict_sync_complete));
                 outputStream.flush();
-
+                isDownloadSuccessful  = true;
                 return true;
             } catch (IOException e) {
                 incompleteDownload();
@@ -200,7 +224,7 @@ public class DictionaryWorker extends Worker implements LifecycleObserver {
     private void notifyDictionaryProgress(String title, String message) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             mBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_icon_search)
+                    .setSmallIcon(R.drawable.ic_dictionary)
                     .setContentTitle(title)
                     .setContentText(message)
                     .setProgress(0, 0, true)
@@ -222,6 +246,7 @@ public class DictionaryWorker extends Worker implements LifecycleObserver {
 
     /** Incomplete download state **/
     private void incompleteDownload() {
+        isDownloadSuccessful  = false;
         notificationComplete(context.getResources().getString(R.string.str_kneura),
                 context.getResources().getString(R.string.str_kneura_dict_sync_in_complete));
     }
