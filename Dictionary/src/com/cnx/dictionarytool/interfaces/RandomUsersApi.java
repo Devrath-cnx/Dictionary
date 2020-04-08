@@ -9,7 +9,6 @@ import retrofit2.http.Url;
 import static com.cnx.dictionarytool.utils.Constants.CYBERNETYX_URL_API;
 
 public interface RandomUsersApi {
-    @Streaming
-    @GET("/download/test.png")
+    @GET(CYBERNETYX_URL_API)
     Call<ResponseBody> downloadDictionary();
 }

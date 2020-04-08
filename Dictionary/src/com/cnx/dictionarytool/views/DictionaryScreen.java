@@ -249,15 +249,10 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
             // Get extra data included in the Intent
             boolean value = intent.getBooleanExtra(INTENT_DOWNLOAD_DICTIONARY_PARAM,false);
             //Log.d("receiver", "Got message: ");
-            if(value){
-                if(new UtilPath(context).isDictionaryExists()){
-                    //Set the flag that file is downloaded
-                    getSharedPreference(context).edit().putBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG,true).apply();
-                    //Dictionary is ready
-                    dictionaryIsReady();
-                }else{
-                    Toast.makeText(context,context.getResources().getString(R.string.str_download_failed_relaunch),Toast.LENGTH_LONG).show();
-                }
+            if(new UtilPath(context).isDictionaryExists()){
+                getSharedPreference(context).edit().putBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG,true).apply();
+                //Dictionary is ready
+                dictionaryIsReady();
             }else{
                 Toast.makeText(context,context.getResources().getString(R.string.str_download_failed_relaunch),Toast.LENGTH_LONG).show();
             }
@@ -277,7 +272,7 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         setListener();
 
         //Check in the shared preferences if the file is downloaded
-        if(getSharedPreference(context).getBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG, false))
+        if(new UtilPath(context).isDictionaryExists())
         {
             //Dictionary file is already downloaded
             dictionaryIsReady();
@@ -916,6 +911,7 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         getSearchIcon().setVisibility(VISIBLE);
         getSearchCloseIcon().setVisibility(GONE);
         getSearchView().setText("");
+        getEmptyTextView().setText(context.getResources().getText(R.string.str_search_something));
     }
 
     private void searchTextNotPresent() {
