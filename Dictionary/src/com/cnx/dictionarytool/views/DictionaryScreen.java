@@ -1,5 +1,6 @@
 package com.cnx.dictionarytool.views;
 
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -23,6 +24,7 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.AdapterView;
@@ -127,6 +129,8 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
     private WebView webView;
     private TextView searchedNameId;
     private ImageView speakerIconId;
+    private ImageView imgSearchIconId;
+    private ImageView imgSearchCncllId;
 
     private TextToSpeech textToSpeech;
 
@@ -145,6 +149,9 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
     });
 
     private DictionaryApplication.Theme theme = DictionaryApplication.Theme.LIGHT;
+
+    private ImageView getSearchIcon() { if (imgSearchIconId == null) { imgSearchIconId = findViewById(R.id.imgSearchIconId); } return imgSearchIconId; }
+    private ImageView getSearchCloseIcon() { if (imgSearchCncllId == null) { imgSearchCncllId = findViewById(R.id.imgSearchCncllId); } return imgSearchCncllId; }
 
     private ImageView getSpeakerImageId() { if (speakerIconId == null) { speakerIconId = findViewById(R.id.speakerIconId); } return speakerIconId; }
     private TextView getSearchedTextView() { if (searchedNameId == null) { searchedNameId = findViewById(R.id.searchedNameId); } return searchedNameId; }
@@ -221,6 +228,7 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         setDictionaryFile(context);
         initListView();
         setInitialListState();
+        emptySearchView();
         initilizeWorkerService(context);
     }
 
@@ -279,6 +287,8 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         getWebView();
         getWebViewContainer();
         getSearchedTextView();
+        getSearchIcon();
+        getSearchCloseIcon();
     }
 
     /** LISTENERS: Set all the listeners for the dictionary **/
@@ -308,6 +318,14 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
                 if(status != TextToSpeech.ERROR) {
                     textToSpeech.setLanguage(Locale.UK);
                 }
+            }
+        });
+
+        imgSearchCncllId.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                hidekeyBoard(context,v);
+                emptySearchView();
             }
         });
 
@@ -346,6 +364,8 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
     private void onSearchTextChange(final String text) {
 
         if(text.length()>3||text.length()==3){
+            getSearchIcon().setVisibility(View.GONE);
+            getSearchCloseIcon().setVisibility(View.VISIBLE);
             //Set the container states
             getEmptyContainer().setVisibility(View.GONE);
             getListContainer().setVisibility(View.VISIBLE);
@@ -353,11 +373,24 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
             currentSearchOperation = new SearchOperation(text, index);
             searchExecutor.execute(currentSearchOperation);
         }else{
+            getSearchIcon().setVisibility(View.VISIBLE);
+            getSearchCloseIcon().setVisibility(View.GONE);
             //Set the container states
             getEmptyContainer().setVisibility(View.VISIBLE);
             getListContainer().setVisibility(View.GONE);
         }
 
+    }
+
+    private void emptySearchView() {
+        getSearchIcon().setVisibility(VISIBLE);
+        getSearchCloseIcon().setVisibility(GONE);
+        getSearchView().setText("");
+    }
+
+    public static void hidekeyBoard(Context context, View view) {
+        InputMethodManager imm = (InputMethodManager) context.getSystemService(Activity.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
     /** Initilize worker service **/
