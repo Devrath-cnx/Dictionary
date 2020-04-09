@@ -1,6 +1,10 @@
-package com.cnx.dictionarytool.application.views.screen;
+package com.cnx.dictionarytool.views;
 
+import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -20,6 +24,7 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.AdapterView;
@@ -33,12 +38,32 @@ import android.widget.ListView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleObserver;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.OnLifecycleEvent;
+import androidx.lifecycle.ProcessLifecycleOwner;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.work.Constraints;
+import androidx.work.NetworkType;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkInfo;
+import androidx.work.WorkManager;
 
 import com.cnx.dictionarytool.R;
-import com.cnx.dictionarytool.application.utils.CopyAssets;
+import com.cnx.dictionarytool.di.components.DaggerSharedPreferencesComponent;
+import com.cnx.dictionarytool.di.components.SharedPreferencesComponent;
+import com.cnx.dictionarytool.utils.CopyAssets;
+import com.cnx.dictionarytool.di.components.DaggerNetworkComponent;
+import com.cnx.dictionarytool.di.components.NetworkComponent;
+import com.cnx.dictionarytool.di.modulles.ContextModule;
+import com.cnx.dictionarytool.di.modulles.NetworkModule;
+import com.cnx.dictionarytool.di.modulles.OkHttpClientModule;
+import com.cnx.dictionarytool.interfaces.RandomUsersApi;
 import com.cnx.dictionarytool.library.others.DictionaryApplication;
 import com.cnx.dictionarytool.library.collections.NonLinkClickableSpan;
 import com.cnx.dictionarytool.library.collections.StringUtil;
@@ -49,6 +74,9 @@ import com.cnx.dictionarytool.library.engine.PairEntry;
 import com.cnx.dictionarytool.library.engine.RowBase;
 import com.cnx.dictionarytool.library.engine.TokenRow;
 import com.cnx.dictionarytool.library.engine.TransliteratorManager;
+import com.cnx.dictionarytool.utils.UtilPath;
+import com.cnx.dictionarytool.workers.DictionaryWorker;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -62,6 +90,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -69,10 +99,23 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import timber.log.Timber;
 
-public class DictionaryScreen extends FrameLayout {
+import static com.cnx.dictionarytool.utils.Constants.DICTIONARY_WORKER_TAG;
+import static com.cnx.dictionarytool.utils.Constants.INTENT_DOWNLOAD_DICTIONARY_PARAM;
+import static com.cnx.dictionarytool.utils.Constants.LOCAL_BROADCAST_DICTIONARY;
+import static com.cnx.dictionarytool.utils.Constants.SHARED_PREFERENCES_DICTIONARY_FLAG_TEST;
+import static com.cnx.dictionarytool.utils.Constants.SHARED_PREFERENCES_FILE_NAME_FLAG;
+import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_EMPTY_SEARCH;
+import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_SEARCH_TEXT_NOT_PRESENT;
+import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_SEARCH_TEXT_PRESENT;
+import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_SYNCHING;
+
+
+public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
 
     private String CURRENT_SCREEN =  DictionaryScreen.this.getClass().getSimpleName();
+    private NetworkComponent networkComponent;
 
     private DictionaryApplication application;
     private String dictionaryFile = "";
@@ -96,8 +139,49 @@ public class DictionaryScreen extends FrameLayout {
     private WebView webView;
     private TextView searchedNameId;
     private ImageView speakerIconId;
+    private ImageView imgSearchIconId;
+    private ImageView imgSearchCncllId;
+    private LinearLayout searchMainContainerId;
+    private TextView emptyNotificationId;
 
     private TextToSpeech textToSpeech;
+
+    private SharedPreferencesComponent sharedPreferencesComponent;
+
+    enum ScreenState {
+        STATE_SYNCHING,
+        STATE_SYNCHED,
+        STATE_EMPTY_SEARCH,
+        STATE_SEARCH_TEXT_PRESENT,
+        STATE_SEARCH_TEXT_NOT_PRESENT
+    }
+
+    public void ScreenDisplayState( ScreenState which) {
+        // do your own bounds checking
+
+        switch (which) {
+            case STATE_SYNCHING:
+                synchingState();
+                break;
+
+            case STATE_SYNCHED:
+                synchedState();
+                break;
+
+            case STATE_EMPTY_SEARCH:
+                emptySearchView();
+                break;
+
+            case STATE_SEARCH_TEXT_PRESENT:
+                searchTextPresent();;
+                break;
+
+            case STATE_SEARCH_TEXT_NOT_PRESENT:
+                searchTextNotPresent();;
+                break;
+
+        }
+    }
 
     String displayText = "";
     private static final Pattern CHAR_DASH = Pattern.compile("['\\p{L}\\p{M}\\p{N}]+");
@@ -114,6 +198,12 @@ public class DictionaryScreen extends FrameLayout {
     });
 
     private DictionaryApplication.Theme theme = DictionaryApplication.Theme.LIGHT;
+
+    private ImageView getSearchIcon() { if (imgSearchIconId == null) { imgSearchIconId = findViewById(R.id.imgSearchIconId); } return imgSearchIconId; }
+    private ImageView getSearchCloseIcon() { if (imgSearchCncllId == null) { imgSearchCncllId = findViewById(R.id.imgSearchCncllId); } return imgSearchCncllId; }
+
+    private LinearLayout getSearchMainContainerId() { if (searchMainContainerId == null) { searchMainContainerId = findViewById(R.id.searchMainContainerId); } return searchMainContainerId; }
+    private TextView getEmptyTextView() { if (emptyNotificationId == null) { emptyNotificationId = findViewById(R.id.emptyNotificationId); } return emptyNotificationId; }
 
     private ImageView getSpeakerImageId() { if (speakerIconId == null) { speakerIconId = findViewById(R.id.speakerIconId); } return speakerIconId; }
     private TextView getSearchedTextView() { if (searchedNameId == null) { searchedNameId = findViewById(R.id.searchedNameId); } return searchedNameId; }
@@ -142,6 +232,32 @@ public class DictionaryScreen extends FrameLayout {
     }
     /******************************* Constructors **************************************************/
 
+    /******************************* Life Cycle Aware Events ***************************************/
+    @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    public void appInResumeState() {
+        LocalBroadcastManager.getInstance(context).registerReceiver(mDictionaryDataReciever,new IntentFilter(LOCAL_BROADCAST_DICTIONARY));
+    }
+
+    @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+    public void appInPauseState() {
+        LocalBroadcastManager.getInstance(context).unregisterReceiver(mDictionaryDataReciever);
+    }
+    /******************************* Life Cycle Aware Events ***************************************/
+
+    private BroadcastReceiver mDictionaryDataReciever = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            //Log.d("receiver", "Got message: ");
+            if(new UtilPath(context).isDictionaryExists()){
+                getSharedPreference(context).edit().putBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG,true).apply();
+                //Dictionary is ready
+                dictionaryIsReady();
+            }else{
+                //Toast.makeText(context,context.getResources().getString(R.string.str_download_failed_relaunch),Toast.LENGTH_LONG).show();
+            }
+        }
+    };
 
     /******************************* Init functions  ***********************************************/
     /** INITIALIZE  Entire Screen **/
@@ -151,16 +267,38 @@ public class DictionaryScreen extends FrameLayout {
         application = DictionaryApplication.INSTANCE;
         context.setTheme(application.getSelectedTheme().themeId);
         inflate(context, R.layout.screen_dictionary, this);
+        ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
         findViewsInScreen();
         setListener();
-        setDictionaryFile(context);
+
+        //Check in the shared preferences if the file is downloaded
+        if(new UtilPath(context).isDictionaryExists())
+        {
+            //Dictionary file is already downloaded
+            dictionaryIsReady();
+        }else{
+            //Dictionary file is already downloaded, So download the dictionary file
+            initilizeWorkerService(context);
+            //Set the sync state
+            ScreenDisplayState(STATE_EMPTY_SEARCH);
+        }
+    }
+
+    /** Dictionary is ready **/
+    private void dictionaryIsReady() {
+        //Set the dictionary file
+        setDictionaryFileFromServer(context);
+        //Initialize the list view
         initListView();
+        //Set the empty list state
         setInitialListState();
+        //Set the search state
+        ScreenDisplayState(STATE_EMPTY_SEARCH);
     }
 
     /** INITIALIZE  List View **/
     private void initListView() {
-        Log.d(CURRENT_SCREEN, "Loading index " + indexIndex);
+        Timber.d(CURRENT_SCREEN, "Loading index " + indexIndex);
         index = dictionary.indices.get(indexIndex);
         getListView().setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         getListView().setEmptyView(findViewById(android.R.id.empty));
@@ -213,7 +351,13 @@ public class DictionaryScreen extends FrameLayout {
         getWebView();
         getWebViewContainer();
         getSearchedTextView();
+        getSearchIcon();
+        getSearchCloseIcon();
+        getSearchMainContainerId();
+        getEmptyTextView();
     }
+
+
 
     /** LISTENERS: Set all the listeners for the dictionary **/
     private void setListener() {
@@ -245,6 +389,14 @@ public class DictionaryScreen extends FrameLayout {
             }
         });
 
+        imgSearchCncllId.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                hidekeyBoard(context,v);
+                ScreenDisplayState(STATE_EMPTY_SEARCH);
+            }
+        });
+
         getSpeakerImageId().setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -253,8 +405,7 @@ public class DictionaryScreen extends FrameLayout {
         });
     }
 
-    /** DICTIONARY: Get the  dictionary from the storage to current class **/
-    private void setDictionaryFile(Context context) {
+    private void setDictionaryFileFromServer(Context context) {
         dictionaryFile = new CopyAssets(context).getDictionaryFileUri();
         if (dictRaf == null){
             dictFile = new File(dictionaryFile);
@@ -265,7 +416,7 @@ public class DictionaryScreen extends FrameLayout {
             }
             dictionary = new Dictionary(dictRaf);
         } catch (Exception e) {
-            Log.e("ERROR",""+e.getMessage());
+            Timber.e(CURRENT_SCREEN, "ERROR: %s", e.getMessage());
         }
         indexIndex = 0;
         for (int i = 0; i < dictionary.indices.size(); ++i) {
@@ -276,22 +427,61 @@ public class DictionaryScreen extends FrameLayout {
         }
     }
 
+
     /** ON TEXT CHANGE : Handle the  visibility of containers based on visibility **/
     private void onSearchTextChange(final String text) {
 
+
+        boolean isDictionaryDownloaded = getSharedPreference(context).getBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG,false);
+        boolean isDictionaryDownloadedTested = getSharedPreference(context).getBoolean(SHARED_PREFERENCES_DICTIONARY_FLAG_TEST,false);
+        /** This should be  performed only once - First time scenario**/
+        if(isDictionaryDownloaded && !isDictionaryDownloadedTested){
+            getSharedPreference(context).edit().putBoolean(SHARED_PREFERENCES_DICTIONARY_FLAG_TEST,true).apply();
+            dictionaryIsReady();
+        }
+        /** This should be  performed only once **/
+
         if(text.length()>3||text.length()==3){
-            //Set the container states
-            getEmptyContainer().setVisibility(View.GONE);
-            getListContainer().setVisibility(View.VISIBLE);
+            ScreenDisplayState(STATE_SEARCH_TEXT_PRESENT);
             //Perform search
             currentSearchOperation = new SearchOperation(text, index);
             searchExecutor.execute(currentSearchOperation);
         }else{
-            //Set the container states
-            getEmptyContainer().setVisibility(View.VISIBLE);
-            getListContainer().setVisibility(View.GONE);
+            ScreenDisplayState(STATE_SEARCH_TEXT_NOT_PRESENT);
         }
 
+    }
+
+    private SharedPreferences getSharedPreference(Context context) {
+        if(sharedPreferencesComponent==null){
+            sharedPreferencesComponent = DaggerSharedPreferencesComponent.builder()
+                    .contextModule(new ContextModule(context))
+                    .build();
+        }
+        return sharedPreferencesComponent.prefManager();
+    }
+
+
+    public static void hidekeyBoard(Context context, View view) {
+        InputMethodManager imm = (InputMethodManager) context.getSystemService(Activity.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
+
+    /** Initilize worker service **/
+    private void initilizeWorkerService(Context context) {
+        if(!isWorkScheduled(DICTIONARY_WORKER_TAG)) { // check if your work is not already scheduled
+            // schedule your work
+            final WorkManager mWorkManager = WorkManager.getInstance(context);
+            final OneTimeWorkRequest mRequest = new OneTimeWorkRequest.Builder(DictionaryWorker.class)
+                    .setConstraints(new Constraints.Builder()
+                            .setRequiredNetworkType(NetworkType.CONNECTED)
+                            .setRequiresBatteryNotLow(true)
+                            .setRequiresStorageNotLow(true)
+                            .build())
+                    .addTag(DICTIONARY_WORKER_TAG)
+                    .build();
+            mWorkManager.enqueue(mRequest);
+        }
     }
 
     /** RESET FILTERED LIST : Change the result of list base on data changed in edit view  **/
@@ -302,7 +492,6 @@ public class DictionaryScreen extends FrameLayout {
 
     /** SET LIST POSITION OF RESULT : Display the position of the result in the list   **/
     private void jumpToRow(final int row) {
-        Log.d("LOG", "jumpToRow: " + row + ", refocusSearchText=" + false);
         getListView().setSelectionFromTop(row, 0);
         getListView().setSelected(true);
     }
@@ -356,16 +545,16 @@ public class DictionaryScreen extends FrameLayout {
 
     private void searchFinished(final SearchOperation searchOperation) {
         if (searchOperation.interrupted.get()) {
-            Log.d(CURRENT_SCREEN, "Search operation was interrupted: " + searchOperation);
+            Timber.d(CURRENT_SCREEN, "Search operation was interrupted: " + searchOperation);
             return;
         }
         if (searchOperation != this.currentSearchOperation) {
-            Log.d(CURRENT_SCREEN, "Stale searchOperation finished: " + searchOperation);
+            Timber.d(CURRENT_SCREEN, "Stale searchOperation finished: " + searchOperation);
             return;
         }
 
         final Index.IndexEntry searchResult = searchOperation.searchResult;
-        Log.d(CURRENT_SCREEN, "searchFinished: " + searchOperation + ", searchResult=" + searchResult);
+        Timber.d(CURRENT_SCREEN, "searchFinished: " + searchOperation + ", searchResult=" + searchResult);
 
         currentSearchOperation = null;
         uiHandler.postDelayed(new Runnable() {
@@ -384,7 +573,7 @@ public class DictionaryScreen extends FrameLayout {
                         throw new IllegalStateException("This should never happen.");
                     }
                 } else {
-                    Log.d(CURRENT_SCREEN, "More coming, waiting for currentSearchOperation.");
+                    Timber.d(CURRENT_SCREEN, "More coming, waiting for currentSearchOperation.");
                 }
             }
         }, 20);
@@ -478,8 +667,14 @@ public class DictionaryScreen extends FrameLayout {
         private TableLayout getView(final int position, PairEntry.Row row, ViewGroup parent,
                                     TableLayout result) {
             final Context context = parent.getContext();
+
+            Typeface type = Typeface.createFromAsset(context.getAssets(),"fonts/Poppins-Regular.ttf");
+
+
             final PairEntry entry = row.getEntry();
             final int rowCount = entry.pairs.size();
+
+
             if (result == null) {
                 result = new TableLayout(context);
                 result.setStretchAllColumns(true);
@@ -513,8 +708,8 @@ public class DictionaryScreen extends FrameLayout {
                 col1.setWidth(1);
                 col2.setWidth(1);
 
-                col1.setTypeface(Typeface.DEFAULT);
-                col2.setTypeface(Typeface.DEFAULT);
+                col1.setTypeface(type);
+                col2.setTypeface(type);
                 col1.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp);
                 col2.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp);
                 // col2.setBackgroundResource(theme.otherLangBg);
@@ -578,7 +773,7 @@ public class DictionaryScreen extends FrameLayout {
                 @Override
                 public void onClick(View v) {
 
-                    Log.d("CLICK","<------------------- CLICK ------------------->");
+                    //Timber.d("CLICK","<------------------- CLICK ------------------->");
                     //DictionaryActivity.this.onListItemClick(getListView(), v, position, position);
                 }
             });
@@ -590,11 +785,13 @@ public class DictionaryScreen extends FrameLayout {
                                                         final String text, final boolean hasMainEntry, final List<HtmlEntry> htmlEntries,
                                                         final String htmlTextToHighlight, ViewGroup parent, TextView textView) {
             final Context context = parent.getContext();
+
+            Typeface type = Typeface.createFromAsset(context.getAssets(),"fonts/Poppins-Regular.ttf");
+
             if (textView == null) {
                 textView = new TextView(context);
                 textView.setLongClickable(true);
-
-                textView.setTypeface(Typeface.DEFAULT);
+                textView.setTypeface(type);
                 if (isTokenRow) {
                     textView.setTextAppearance(context, theme.tokenRowFg);
                     textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 4 * fontSizeSp / 3);
@@ -678,7 +875,7 @@ public class DictionaryScreen extends FrameLayout {
                     searchTokens = Arrays.asList(searchTokenArray);
                     multiWordSearchResult = index.multiWordSearch(searchText, searchTokens, interrupted);
                 }
-                Log.d(CURRENT_SCREEN,"searchText=" + searchText + ", searchDuration="+ (System.currentTimeMillis() - searchStartMillis)+ ", interrupted=" + interrupted.get());
+                Timber.d(CURRENT_SCREEN,"searchText=" + searchText + ", searchDuration="+ (System.currentTimeMillis() - searchStartMillis)+ ", interrupted=" + interrupted.get());
                 if (!interrupted.get()) {
                     uiHandler.post(new Runnable() {
                         @Override
@@ -687,10 +884,10 @@ public class DictionaryScreen extends FrameLayout {
                         }
                     });
                 } else {
-                    Log.d(CURRENT_SCREEN, "interrupted, skipping searchFinished.");
+                    Timber.d(CURRENT_SCREEN, "interrupted, skipping searchFinished.");
                 }
             } catch (Exception e) {
-                Log.e(CURRENT_SCREEN, "Failure during search (can happen during Activity close): " + e.getMessage());
+                Timber.e(CURRENT_SCREEN, "Failure during search (can happen during Activity close): %s", e.getMessage());
             } finally {
                 synchronized (this) {
                     this.notifyAll();
@@ -699,4 +896,94 @@ public class DictionaryScreen extends FrameLayout {
         }
     }
     /** ******************************************** CLASS IMPLEMENTATIONS ******************************************** **/
+
+
+    /** ******************************************** SCREEN  STATES ******************************************** **/
+    private void synchingState() {
+        getSearchMainContainerId().setVisibility(View.GONE);
+        getListContainer().setVisibility(View.GONE);
+        getEmptyContainer().setVisibility(View.VISIBLE);
+        getWebViewContainer().setVisibility(View.GONE);
+        getEmptyTextView().setText(context.getResources().getText(R.string.str_search_dict_getting_downloaded));
+        getRootId().requestLayout();
+    }
+
+    private void synchedState() {
+        getSearchMainContainerId().setVisibility(View.VISIBLE);
+        getListContainer().setVisibility(View.VISIBLE);
+        getEmptyContainer().setVisibility(View.GONE);
+        getWebViewContainer().setVisibility(View.GONE);
+        getEmptyTextView().setText(context.getResources().getText(R.string.str_search_something));
+        getRootId().requestLayout();
+    }
+
+    private void emptySearchView() {
+        getSearchIcon().setVisibility(VISIBLE);
+        getSearchCloseIcon().setVisibility(GONE);
+        getSearchView().setText("");
+        getEmptyTextView().setText(context.getResources().getText(R.string.str_search_something));
+    }
+
+    private void searchTextNotPresent() {
+        getSearchIcon().setVisibility(View.VISIBLE);
+        getSearchCloseIcon().setVisibility(View.GONE);
+        //Set the container states
+        getEmptyContainer().setVisibility(View.VISIBLE);
+        getListContainer().setVisibility(View.GONE);
+    }
+
+    private void searchTextPresent() {
+        getSearchIcon().setVisibility(View.GONE);
+        getSearchCloseIcon().setVisibility(View.VISIBLE);
+        //Set the container states
+        getEmptyContainer().setVisibility(View.GONE);
+        getListContainer().setVisibility(View.VISIBLE);
+    }
+    /** ******************************************** SCREEN  STATES ******************************************** **/
+
+
+    private boolean isWorkScheduled(String tag) {
+        WorkManager instance = WorkManager.getInstance();
+        ListenableFuture<List<WorkInfo>> statuses = instance.getWorkInfosByTag(tag);
+        try {
+            boolean running = false;
+            List<WorkInfo> workInfoList = statuses.get();
+            for (WorkInfo workInfo : workInfoList) {
+                WorkInfo.State state = workInfo.getState();
+                running = state == WorkInfo.State.RUNNING | state == WorkInfo.State.ENQUEUED;
+            }
+            return running;
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+            return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+
+    /** DICTIONARY: Get the  dictionary from the storage to current class **/
+    /** Dont delete this commented function --- Use for testing with assets folder **/
+    /*private void setDictionaryFileFromAssets(Context context) {
+        dictionaryFile = new CopyAssets(context).getDictionaryFileUri();
+        if (dictRaf == null){
+            dictFile = new File(dictionaryFile);
+        }
+        try {
+            if (dictRaf == null) {
+                dictRaf = new RandomAccessFile(dictFile, "r").getChannel();
+            }
+            dictionary = new Dictionary(dictRaf);
+        } catch (Exception e) {
+            Timber.e(CURRENT_SCREEN, "ERROR: %s", e.getMessage());
+        }
+        indexIndex = 0;
+        for (int i = 0; i < dictionary.indices.size(); ++i) {
+            if (dictionary.indices.get(i).shortName.equals("EN")) {
+                indexIndex = i;
+                break;
+            }
+        }
+    }*/
 }

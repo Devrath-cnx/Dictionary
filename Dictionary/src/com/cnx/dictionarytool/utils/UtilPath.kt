@@ -1,9 +1,9 @@
-package com.cnx.dictionarytool.application.utils
+package com.cnx.dictionarytool.utils
 
 import android.content.Context
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.cnx.dictionarytool.application.utils.Constants.DICTIONARY_FILE
+import com.cnx.dictionarytool.utils.Constants.DICTIONARY_FILE
 import java.io.File
 
 class UtilPath(val context: Context) {

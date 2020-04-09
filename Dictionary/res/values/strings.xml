@@ -105,7 +105,16 @@
     <string name="themeSummary">User-interface color theme.</string>
     <string name="chosenNotWritable">Chosen directory not writable, try one of</string>
 
-
+    <string name="str_kneura">Kneura Teach</string>
+    <string name="str_kneura_dict_sync">Downloading the dictionary</string>
+    <string name="str_kneura_dict_sync_complete">Dictionary download complete</string>
+    <string name="str_kneura_dict_sync_in_complete">Dictionary download incomplete</string>
+    <string name="str_kneura_dict_sync_write_to_device">Syncing with server</string>
+    <string name="str_search_something">Search something</string>
+    <string name="str_search_dict_getting_downloaded">Dictionary is getting downloaded, Please wait</string>
+    <string name="str_download_failed_relaunch">Downloading dictionary failed, Please relaunch dictionary</string>
     <string name="fontRegular" translatable="false">fonts/Poppins-Regular.ttf</string>
+
+
 
 </resources>

@@ -1,4 +1,4 @@
-package com.cnx.dictionarytool.application.utils
+package com.cnx.dictionarytool.utils
 
 import android.content.Context
 import android.graphics.Typeface
