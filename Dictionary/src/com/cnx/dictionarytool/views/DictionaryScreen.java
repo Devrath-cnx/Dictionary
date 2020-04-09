@@ -246,8 +246,7 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
     private BroadcastReceiver mDictionaryDataReciever = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            // Get extra data included in the Intent
-            boolean value = intent.getBooleanExtra(INTENT_DOWNLOAD_DICTIONARY_PARAM,false);
+
             //Log.d("receiver", "Got message: ");
             if(new UtilPath(context).isDictionaryExists()){
                 getSharedPreference(context).edit().putBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG,true).apply();
