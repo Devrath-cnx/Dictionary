@@ -20,7 +20,6 @@ import android.text.style.ClickableSpan;
 import android.text.style.StyleSpan;
 import android.util.AttributeSet;
 import android.util.Base64;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
@@ -38,13 +37,11 @@ import android.widget.ListView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleObserver;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.OnLifecycleEvent;
 import androidx.lifecycle.ProcessLifecycleOwner;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -58,12 +55,8 @@ import com.cnx.dictionarytool.R;
 import com.cnx.dictionarytool.di.components.DaggerSharedPreferencesComponent;
 import com.cnx.dictionarytool.di.components.SharedPreferencesComponent;
 import com.cnx.dictionarytool.utils.CopyAssets;
-import com.cnx.dictionarytool.di.components.DaggerNetworkComponent;
 import com.cnx.dictionarytool.di.components.NetworkComponent;
 import com.cnx.dictionarytool.di.modulles.ContextModule;
-import com.cnx.dictionarytool.di.modulles.NetworkModule;
-import com.cnx.dictionarytool.di.modulles.OkHttpClientModule;
-import com.cnx.dictionarytool.interfaces.RandomUsersApi;
 import com.cnx.dictionarytool.library.others.DictionaryApplication;
 import com.cnx.dictionarytool.library.collections.NonLinkClickableSpan;
 import com.cnx.dictionarytool.library.collections.StringUtil;
@@ -91,7 +84,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -102,8 +94,9 @@ import java.util.regex.Pattern;
 import timber.log.Timber;
 
 import static com.cnx.dictionarytool.utils.Constants.DICTIONARY_WORKER_TAG;
-import static com.cnx.dictionarytool.utils.Constants.INTENT_DOWNLOAD_DICTIONARY_PARAM;
+import static com.cnx.dictionarytool.utils.Constants.INTENT_DOWNLOAD_SEARCH_VISIBILITY_PARAM;
 import static com.cnx.dictionarytool.utils.Constants.LOCAL_BROADCAST_DICTIONARY;
+import static com.cnx.dictionarytool.utils.Constants.LOCAL_BROADCAST_DICTIONARY_SEARCH_VISIBILITY;
 import static com.cnx.dictionarytool.utils.Constants.SHARED_PREFERENCES_DICTIONARY_FLAG_TEST;
 import static com.cnx.dictionarytool.utils.Constants.SHARED_PREFERENCES_FILE_NAME_FLAG;
 import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_EMPTY_SEARCH;
@@ -150,7 +143,6 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
 
     enum ScreenState {
         STATE_SYNCHING,
-        STATE_SYNCHED,
         STATE_EMPTY_SEARCH,
         STATE_SEARCH_TEXT_PRESENT,
         STATE_SEARCH_TEXT_NOT_PRESENT
@@ -162,10 +154,6 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         switch (which) {
             case STATE_SYNCHING:
                 synchingState();
-                break;
-
-            case STATE_SYNCHED:
-                synchedState();
                 break;
 
             case STATE_EMPTY_SEARCH:
@@ -236,11 +224,13 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
     @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
     public void appInResumeState() {
         LocalBroadcastManager.getInstance(context).registerReceiver(mDictionaryDataReciever,new IntentFilter(LOCAL_BROADCAST_DICTIONARY));
+        LocalBroadcastManager.getInstance(context).registerReceiver(mSearchVisibilityListener,new IntentFilter(LOCAL_BROADCAST_DICTIONARY_SEARCH_VISIBILITY));
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
     public void appInPauseState() {
         LocalBroadcastManager.getInstance(context).unregisterReceiver(mDictionaryDataReciever);
+        LocalBroadcastManager.getInstance(context).unregisterReceiver(mSearchVisibilityListener);
     }
     /******************************* Life Cycle Aware Events ***************************************/
 
@@ -248,14 +238,34 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         @Override
         public void onReceive(Context context, Intent intent) {
 
-            //Log.d("receiver", "Got message: ");
-            if(new UtilPath(context).isDictionaryExists()){
-                getSharedPreference(context).edit().putBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG,true).apply();
-                //Dictionary is ready
-                dictionaryIsReady();
-            }else{
-                //Toast.makeText(context,context.getResources().getString(R.string.str_download_failed_relaunch),Toast.LENGTH_LONG).show();
+            if(checkIfScreenIsVisibleOnWhiteBoard()){
+                if(new UtilPath(context).isDictionaryExists()){
+                    getSharedPreference(context).edit().putBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG,true).apply();
+                    //Dictionary is ready
+                    dictionaryIsReady();
+                }else{
+                    //Toast.makeText(context,context.getResources().getString(R.string.str_download_failed_relaunch),Toast.LENGTH_LONG).show();
+                }
             }
+
+        }
+    };
+
+    private BroadcastReceiver mSearchVisibilityListener = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            if(checkIfScreenIsVisibleOnWhiteBoard()){
+                boolean visibility = intent.getBooleanExtra(INTENT_DOWNLOAD_SEARCH_VISIBILITY_PARAM,false);
+                if(visibility){
+                    //Show search state and initiate search
+                    ScreenDisplayState(STATE_EMPTY_SEARCH);
+                }else{
+                    //Show sync state and don't initiate the search
+                    ScreenDisplayState(STATE_SYNCHING);
+                }
+            }
+
         }
     };
 
@@ -280,9 +290,10 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
             //Dictionary file is already downloaded, So download the dictionary file
             initilizeWorkerService(context);
             //Set the sync state
-            ScreenDisplayState(STATE_EMPTY_SEARCH);
+            ScreenDisplayState(STATE_SYNCHING);
         }
     }
+
 
     /** Dictionary is ready **/
     private void dictionaryIsReady() {
@@ -908,16 +919,8 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         getRootId().requestLayout();
     }
 
-    private void synchedState() {
-        getSearchMainContainerId().setVisibility(View.VISIBLE);
-        getListContainer().setVisibility(View.VISIBLE);
-        getEmptyContainer().setVisibility(View.GONE);
-        getWebViewContainer().setVisibility(View.GONE);
-        getEmptyTextView().setText(context.getResources().getText(R.string.str_search_something));
-        getRootId().requestLayout();
-    }
-
     private void emptySearchView() {
+        getSearchMainContainerId().setVisibility(View.VISIBLE);
         getSearchIcon().setVisibility(VISIBLE);
         getSearchCloseIcon().setVisibility(GONE);
         getSearchView().setText("");
@@ -941,7 +944,7 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
     }
     /** ******************************************** SCREEN  STATES ******************************************** **/
 
-
+    /** IS Dictionary download worker thread already active **/
     private boolean isWorkScheduled(String tag) {
         WorkManager instance = WorkManager.getInstance();
         ListenableFuture<List<WorkInfo>> statuses = instance.getWorkInfosByTag(tag);
@@ -959,6 +962,15 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         } catch (InterruptedException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    /** Used to check if the screen is visible to user - Useful when handling background notifications to UI **/
+    private boolean checkIfScreenIsVisibleOnWhiteBoard() {
+        if(rootId==null){
+            return false;
+        }else{
+            return true;
         }
     }
 

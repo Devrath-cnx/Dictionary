@@ -10,5 +10,6 @@ import static com.cnx.dictionarytool.utils.Constants.CYBERNETYX_URL_API;
 
 public interface RandomUsersApi {
     @GET(CYBERNETYX_URL_API)
+    @Streaming
     Call<ResponseBody> downloadDictionary();
 }

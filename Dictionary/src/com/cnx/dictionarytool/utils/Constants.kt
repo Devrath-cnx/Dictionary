@@ -11,12 +11,14 @@ object Constants {
 
 
     const val LOCAL_BROADCAST_DICTIONARY = "LOCAL-BROADCAST-DICTIONARY"
+    const val LOCAL_BROADCAST_DICTIONARY_SEARCH_VISIBILITY = "LOCAL_BROADCAST_DICTIONARY_SEARCH_VISIBILITY"
     const val SHARED_PREFERENCES_FILE_NAME = "DictionarySharedPreferences"
     const val SHARED_PREFERENCES_FILE_NAME_FLAG = "DictionarySharedPreferencesFlag"
     const val SHARED_PREFERENCES_DICTIONARY_FLAG_TEST = "DictionaryFlagTest"
 
 
     const val INTENT_DOWNLOAD_DICTIONARY_PARAM = "IntentDownloadDictionaryParam"
+    const val INTENT_DOWNLOAD_SEARCH_VISIBILITY_PARAM = "IntentDownloadDictionarySearchVisibilityParam"
 
 
     const val DICTIONARY_FILE_PATH = "/storage/emulated/0/Android/data/com.cnx.dictionarytool/files/EN.quickdic"
