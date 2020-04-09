@@ -104,6 +104,7 @@ import timber.log.Timber;
 import static com.cnx.dictionarytool.utils.Constants.DICTIONARY_WORKER_TAG;
 import static com.cnx.dictionarytool.utils.Constants.INTENT_DOWNLOAD_DICTIONARY_PARAM;
 import static com.cnx.dictionarytool.utils.Constants.LOCAL_BROADCAST_DICTIONARY;
+import static com.cnx.dictionarytool.utils.Constants.SHARED_PREFERENCES_DICTIONARY_FLAG_TEST;
 import static com.cnx.dictionarytool.utils.Constants.SHARED_PREFERENCES_FILE_NAME_FLAG;
 import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_EMPTY_SEARCH;
 import static com.cnx.dictionarytool.views.DictionaryScreen.ScreenState.STATE_SEARCH_TEXT_NOT_PRESENT;
@@ -253,7 +254,7 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
                 //Dictionary is ready
                 dictionaryIsReady();
             }else{
-                Toast.makeText(context,context.getResources().getString(R.string.str_download_failed_relaunch),Toast.LENGTH_LONG).show();
+                //Toast.makeText(context,context.getResources().getString(R.string.str_download_failed_relaunch),Toast.LENGTH_LONG).show();
             }
         }
     };
@@ -429,6 +430,16 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
 
     /** ON TEXT CHANGE : Handle the  visibility of containers based on visibility **/
     private void onSearchTextChange(final String text) {
+
+
+        boolean isDictionaryDownloaded = getSharedPreference(context).getBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG,false);
+        boolean isDictionaryDownloadedTested = getSharedPreference(context).getBoolean(SHARED_PREFERENCES_DICTIONARY_FLAG_TEST,false);
+        /** This should be  performed only once - First time scenario**/
+        if(isDictionaryDownloaded && !isDictionaryDownloadedTested){
+            getSharedPreference(context).edit().putBoolean(SHARED_PREFERENCES_DICTIONARY_FLAG_TEST,true).apply();
+            dictionaryIsReady();
+        }
+        /** This should be  performed only once **/
 
         if(text.length()>3||text.length()==3){
             ScreenDisplayState(STATE_SEARCH_TEXT_PRESENT);

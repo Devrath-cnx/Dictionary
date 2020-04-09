@@ -4,6 +4,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 
 import androidx.annotation.NonNull;
@@ -17,7 +18,9 @@ import androidx.work.WorkerParameters;
 
 import com.cnx.dictionarytool.R;
 import com.cnx.dictionarytool.di.components.DaggerNetworkComponent;
+import com.cnx.dictionarytool.di.components.DaggerSharedPreferencesComponent;
 import com.cnx.dictionarytool.di.components.NetworkComponent;
+import com.cnx.dictionarytool.di.components.SharedPreferencesComponent;
 import com.cnx.dictionarytool.di.modulles.ContextModule;
 import com.cnx.dictionarytool.di.modulles.NetworkModule;
 import com.cnx.dictionarytool.di.modulles.OkHttpClientModule;
@@ -38,6 +41,7 @@ import timber.log.Timber;
 import static com.cnx.dictionarytool.utils.Constants.DICTIONARY_FILE;
 import static com.cnx.dictionarytool.utils.Constants.INTENT_DOWNLOAD_DICTIONARY_PARAM;
 import static com.cnx.dictionarytool.utils.Constants.LOCAL_BROADCAST_DICTIONARY;
+import static com.cnx.dictionarytool.utils.Constants.SHARED_PREFERENCES_FILE_NAME_FLAG;
 
 public class DictionaryWorker extends Worker implements LifecycleObserver {
 
@@ -48,6 +52,7 @@ public class DictionaryWorker extends Worker implements LifecycleObserver {
 
     private Context context;
     private NetworkComponent networkComponent;
+    private SharedPreferencesComponent sharedPreferencesComponent;
     private NotificationCompat.Builder mBuilder;
     private  NotificationManagerCompat notificationManager;
     private boolean isDownloadSuccessful  = false;
@@ -106,10 +111,19 @@ public class DictionaryWorker extends Worker implements LifecycleObserver {
         return networkComponent.getService();
     }
 
+    private SharedPreferences getSharedPreference(Context context) {
+        if(sharedPreferencesComponent==null){
+            sharedPreferencesComponent = DaggerSharedPreferencesComponent.builder()
+                    .contextModule(new ContextModule(context))
+                    .build();
+        }
+        return sharedPreferencesComponent.prefManager();
+    }
+
 
     /********************************************************** RETROFIT *************************************************/
     private void initCnxNetworkConnection(final Context context) {
-        notifyDictionaryProgress(context.getResources().getString(R.string.str_kneura), "Connecting to kneura server");
+        notifyDictionaryProgress(context.getResources().getString(R.string.str_kneura), context.getResources().getString(R.string.str_kneura_dict_sync_write_to_device));
 
         try{
             Call<ResponseBody> call = getNetworkService(context).downloadDictionary();
@@ -181,6 +195,7 @@ public class DictionaryWorker extends Worker implements LifecycleObserver {
                 }
                 notificationComplete(context.getResources().getString(R.string.str_kneura),
                                      context.getResources().getString(R.string.str_kneura_dict_sync_complete));
+                getSharedPreference(context).edit().putBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG,true).apply();
                 outputStream.flush();
                 isDownloadSuccessful  = true;
                 return true;
