@@ -1,6 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
+apply plugin: 'maven-publish'
 
 buildscript {
     repositories {
@@ -91,4 +92,21 @@ dependencies {
 task sourceJar(type: Jar) {
     from android.sourceSets.main.java.srcDirs
     classifier "sources"
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId 'com.cnx'
+            artifactId 'dictionary'
+            version '0.0.1'
+            artifact(sourceJar)
+            artifact("$buildDir/outputs/aar/dictionary-release.aar")
+        }
+    }
+    repositories {
+        maven {
+            url "$localMavenRepo/DictionaryWidget"
+        }
+    }
 }
