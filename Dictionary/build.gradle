@@ -1,3 +1,8 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'maven-publish'
+
 buildscript {
     repositories {
         jcenter()
@@ -8,8 +13,6 @@ buildscript {
     }
 }
 
-apply plugin: 'com.android.library'
-
 repositories {
     jcenter()
     google()
@@ -17,45 +20,35 @@ repositories {
 configurations {
     smallicu
 }
-dependencies {
-    implementation 'com.android.support:appcompat-v7:25.3.1'
-    implementation 'com.android.support:design:25.3.1'
-    implementation group: 'com.ibm.icu', name: 'icu4j', version: '58.2'
-    // Note: you can just replace "smallicu" by implementation
-    // and remove the "compile files" part if you do not
-    // care about the size of the apk
-    /*smallicu 'com.ibm.icu:icu4j:57.1'
-    implementation files("$buildDir/icu4j-57.1.small.jar") {
-        builtBy 'makesmallicu'
-    }*/
-}
 
-/*task makesmallicu (type:Exec, dependsOn: configurations.smallicu) {
-    inputs.file "mksmallicu.sh"
-    inputs.file "${configurations.smallicu.resolve()[0]}"
-    outputs.dir "$buildDir"
-    outputs.file "$buildDir/icu4j-57.1.small.jar"
-    // necessary due to gradle bug: GRADLE-2638
-    new File("$buildDir").mkdirs()
-    commandLine "./mksmallicu.sh", "${configurations.smallicu.resolve()[0]}", "$buildDir/icu4j-57.1.small.jar"
-}*/
 
 def utildir = hasProperty("quickdicUtilDir") ? quickdicUtilDir : "Util"
 
 android {
     compileSdkVersion 29
+    buildToolsVersion "29.0.2"
+
+    defaultConfig {
+        minSdkVersion 14
+        targetSdkVersion 29
+        versionCode 1
+        versionName "1.0"
+        resConfigs "de", "es", "fr", "it", "ja", "pt", "pt-rBR", "ru", "zh-rCN"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
     lintOptions {
         disable "MissingTranslation"
     }
-    buildTypes {
-        debug {
-            //applicationIdSuffix ".debug"
-        }
-        release {
-            minifyEnabled true
-            //shrinkResources true
-        }
-    }
+
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
@@ -64,19 +57,56 @@ android {
             assets.srcDirs = ['assets']
         }
 
-        // Move the build types to build-types/<type>
-        // For instance, build-types/debug/java, build-types/debug/AndroidManifest.xml, ...
-        // This moves them out of them default location under src/<type>/... which would
-        // conflict with src/ being used by the main source set.
-        // Adding new build types or product flavors should be accompanied
-        // by a similar customization.
         debug.setRoot('build-types/debug')
         release.setRoot('build-types/release')
     }
-    defaultConfig {
-        //applicationId 'de.reimardoeffinger.quickdic'
-        targetSdkVersion 29
-        resConfigs "de", "es", "fr", "it", "ja", "pt", "pt-rBR", "ru", "zh-rCN"
-        minSdkVersion 14
+
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.core:core-ktx:1.2.0'
+    implementation 'androidx.work:work-runtime:2.3.4'
+    implementation 'com.google.android.material:material:1.1.0'
+    implementation group: 'com.ibm.icu', name: 'icu4j', version: '66.1'
+    implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.7'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+
+    implementation 'com.squareup.retrofit2:retrofit:2.6.0'
+    implementation 'com.google.code.gson:gson:2.8.5'
+    implementation 'com.jakewharton.timber:timber:4.7.1'
+    implementation 'com.squareup.retrofit2:converter-gson:2.6.0'
+    implementation 'com.squareup.okhttp3:okhttp:3.12.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:3.10.0'
+    implementation 'com.google.dagger:dagger:2.23.2'
+    annotationProcessor 'com.google.dagger:dagger-compiler:2.23.2'
+    implementation 'android.arch.lifecycle:extensions:1.1.1'
+
+
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
+}
+
+task sourceJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier "sources"
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId 'com.cnx'
+            artifactId 'dictionary'
+            version '0.0.1'
+            artifact(sourceJar)
+            artifact("$buildDir/outputs/aar/dictionary-release.aar")
+        }
+    }
+    repositories {
+        maven {
+            url "$localMavenRepo/DictionaryWidget"
+        }
     }
 }
