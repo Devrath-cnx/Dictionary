@@ -40,10 +40,12 @@ import timber.log.Timber;
 
 import static com.cnx.dictionarytool.utils.Constants.DICTIONARY_FILE;
 import static com.cnx.dictionarytool.utils.Constants.INTENT_DOWNLOAD_DICTIONARY_PARAM;
+import static com.cnx.dictionarytool.utils.Constants.INTENT_DOWNLOAD_SEARCH_VISIBILITY_PARAM;
 import static com.cnx.dictionarytool.utils.Constants.LOCAL_BROADCAST_DICTIONARY;
+import static com.cnx.dictionarytool.utils.Constants.LOCAL_BROADCAST_DICTIONARY_SEARCH_VISIBILITY;
 import static com.cnx.dictionarytool.utils.Constants.SHARED_PREFERENCES_FILE_NAME_FLAG;
 
-public class DictionaryWorker extends Worker implements LifecycleObserver {
+public class DictionaryWorker extends Worker  {
 
     private final String CURRENT_SCREEN =  DictionaryWorker.this.getClass().getSimpleName();
     private static final String WORK_RESULT = "work_result";
@@ -67,34 +69,19 @@ public class DictionaryWorker extends Worker implements LifecycleObserver {
     @NonNull
     @Override
     public Result doWork() {
-        try{
-            /** Initilize the notification channel **/
-            initNotificationChannel();
-            /** Connect to cnx server , download the file and write the file to storage **/
-            initCnxNetworkConnection(context);
+        sendSearchStateVisibility(false);
+        initNotificationChannel();
+        initCnxNetworkConnection(context);
 
-            if(isDownloadSuccessful){
-                sendMessage(true);
-                Data outputData = new Data.Builder().putString(WORK_RESULT, "Jobs Finished").build();
-                return Result.success(outputData);
-            }else{
-                sendMessage(false);
-                Data outputData = new Data.Builder().putString(WORK_RESULT, "Jobs Finished").build();
-                return Result.failure(outputData);
-            }
-        }catch (Exception ex){
-            ex.printStackTrace();
-        }
-        sendMessage(false);
         Data outputData = new Data.Builder().putString(WORK_RESULT, "Jobs Finished").build();
-        return Result.failure(outputData);
+        return Result.success(outputData);
 
     }
 
-    private void sendMessage(boolean value) {
-        Intent intent = new Intent(LOCAL_BROADCAST_DICTIONARY);
-        // You can also include some extra data.
-        intent.putExtra(INTENT_DOWNLOAD_DICTIONARY_PARAM, value);
+
+    private void sendSearchStateVisibility(boolean value) {
+        Intent intent = new Intent(LOCAL_BROADCAST_DICTIONARY_SEARCH_VISIBILITY);
+        intent.putExtra(INTENT_DOWNLOAD_SEARCH_VISIBILITY_PARAM, value);
         LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
     }
 
@@ -196,6 +183,7 @@ public class DictionaryWorker extends Worker implements LifecycleObserver {
                 notificationComplete(context.getResources().getString(R.string.str_kneura),
                                      context.getResources().getString(R.string.str_kneura_dict_sync_complete));
                 getSharedPreference(context).edit().putBoolean(SHARED_PREFERENCES_FILE_NAME_FLAG,true).apply();
+                sendSearchStateVisibility(true);
                 outputStream.flush();
                 isDownloadSuccessful  = true;
                 return true;
