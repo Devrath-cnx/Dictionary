@@ -46,6 +46,7 @@ import androidx.lifecycle.OnLifecycleEvent;
 import androidx.lifecycle.ProcessLifecycleOwner;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.work.Constraints;
+import androidx.work.ExistingWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkInfo;
@@ -480,19 +481,18 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
 
     /** Initilize worker service **/
     private void initilizeWorkerService(Context context) {
-        if(!isWorkScheduled(DICTIONARY_WORKER_TAG)) { // check if your work is not already scheduled
-            // schedule your work
-            final WorkManager mWorkManager = WorkManager.getInstance(context);
-            final OneTimeWorkRequest mRequest = new OneTimeWorkRequest.Builder(DictionaryWorker.class)
-                    .setConstraints(new Constraints.Builder()
-                            .setRequiredNetworkType(NetworkType.CONNECTED)
-                            .setRequiresBatteryNotLow(true)
-                            .setRequiresStorageNotLow(true)
-                            .build())
-                    .addTag(DICTIONARY_WORKER_TAG)
-                    .build();
-            mWorkManager.enqueue(mRequest);
-        }
+        // schedule your work
+        final WorkManager mWorkManager = WorkManager.getInstance(context);
+        final OneTimeWorkRequest mRequest = new OneTimeWorkRequest.Builder(DictionaryWorker.class)
+                .setConstraints(new Constraints.Builder()
+
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .setRequiresBatteryNotLow(true)
+                        .setRequiresStorageNotLow(true)
+                        .build())
+                .addTag(DICTIONARY_WORKER_TAG)
+                .build();
+        mWorkManager.beginUniqueWork(DICTIONARY_WORKER_TAG, ExistingWorkPolicy.KEEP,mRequest).enqueue();
     }
 
     /** RESET FILTERED LIST : Change the result of list base on data changed in edit view  **/
@@ -943,27 +943,6 @@ public class DictionaryScreen extends FrameLayout implements LifecycleObserver {
         getListContainer().setVisibility(View.VISIBLE);
     }
     /** ******************************************** SCREEN  STATES ******************************************** **/
-
-    /** IS Dictionary download worker thread already active **/
-    private boolean isWorkScheduled(String tag) {
-        WorkManager instance = WorkManager.getInstance();
-        ListenableFuture<List<WorkInfo>> statuses = instance.getWorkInfosByTag(tag);
-        try {
-            boolean running = false;
-            List<WorkInfo> workInfoList = statuses.get();
-            for (WorkInfo workInfo : workInfoList) {
-                WorkInfo.State state = workInfo.getState();
-                running = state == WorkInfo.State.RUNNING | state == WorkInfo.State.ENQUEUED;
-            }
-            return running;
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-            return false;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
 
     /** Used to check if the screen is visible to user - Useful when handling background notifications to UI **/
     private boolean checkIfScreenIsVisibleOnWhiteBoard() {
